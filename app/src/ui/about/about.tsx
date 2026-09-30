@@ -151,7 +151,7 @@ export class About extends React.Component<IAboutProps> {
       return (
         <p>
           {__UPDATES_URL__.length === 0
-            ? 'Automatic updates are not configured for this build. Install a newer GitHub Desktop release manually.'
+            ? 'Automatic updates are not configured for this build. Install a newer Git Desktop release manually.'
             : 'The application is currently running in development and will not receive any updates.'}
         </p>
       )
@@ -270,12 +270,7 @@ export class About extends React.Component<IAboutProps> {
         {this.renderUpdateErrors()}
         <DialogContent>
           <Row className="logo">
-            <img
-              src={DesktopLogo}
-              alt="GitHub Desktop"
-              width="64"
-              height="64"
-            />
+            <img src={DesktopLogo} alt="Git Desktop" width="64" height="64" />
           </Row>
           <h1 id={titleId}>About {name}</h1>
           <p className="no-padding">
@@ -300,7 +295,7 @@ export class About extends React.Component<IAboutProps> {
             </p>
             <p className="terms-and-license">
               <LinkButton uri="https://gh.io/copilot-for-desktop-transparency">
-                Responsible use of Copilot in GitHub Desktop
+                Responsible use of Copilot in Git Desktop
               </LinkButton>
             </p>
           </div>

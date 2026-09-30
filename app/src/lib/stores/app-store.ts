@@ -884,7 +884,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
 
   /**
    * On Windows OS, whenever a user toggles their zoom factor, chromium stores it
-   * in their `%AppData%/Roaming/GitHub Desktop/Preferences.js` denoted by the
+   * in their `%AppData%/Roaming/Git Desktop/Preferences.js` denoted by the
    * file path to the application. That file path contains the apps version.
    * Thus, on every update, the users set zoom level gets reset as there is not
    * defined value for the current app version.
@@ -7738,7 +7738,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
         const match = available.find(s => s.shell === requestedShell)
         if (match === undefined) {
           throw new ShellError(
-            `${requestedShell} is not available. Install it and restart GitHub Desktop to try again.`
+            `${requestedShell} is not available. Install it and restart Git Desktop to try again.`
           )
         }
         await launchShell(match, path, error => this._pushError(error))
@@ -7779,7 +7779,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
         if (match === null) {
           this.emitError(
             new ExternalEditorError(
-              `No suitable editors installed for GitHub Desktop to launch. Install ${suggestedExternalEditor.name} for your platform and restart GitHub Desktop to try again.`,
+              `No suitable editors installed for Git Desktop to launch. Install ${suggestedExternalEditor.name} for your platform and restart Git Desktop to try again.`,
               { suggestDefaultEditor: true }
             )
           )
@@ -7856,7 +7856,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
       if (match === null) {
         this.emitError(
           new ExternalEditorError(
-            `No suitable editors installed for GitHub Desktop to launch. Install ${suggestedExternalEditor.name} for your platform and restart GitHub Desktop to try again.`,
+            `No suitable editors installed for Git Desktop to launch. Install ${suggestedExternalEditor.name} for your platform and restart Git Desktop to try again.`,
             { suggestDefaultEditor: true }
           )
         )

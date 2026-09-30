@@ -27,15 +27,15 @@ describe('local distribution identity and updates', () => {
     }
   })
 
-  it('uses the standard production and development identities', () => {
-    assert.equal(getProductName(), 'GitHub Desktop')
+  it('uses Git Desktop production and development names with compatible bundle IDs', () => {
+    assert.equal(getProductName(), 'Git Desktop')
     assert.equal(getBundleID(), 'com.github.GitHubClient')
-    assert.equal(getWindowsIdentifierName(), 'GitHubDesktop')
+    assert.equal(getWindowsIdentifierName(), 'GitDesktop')
     if (process.platform === 'win32') {
-      assert.equal(getExecutableName(), 'GitHubDesktop')
+      assert.equal(getExecutableName(), 'GitDesktop')
     }
     process.env.NODE_ENV = 'development'
-    assert.equal(getProductName(), 'GitHub Desktop-dev')
+    assert.equal(getProductName(), 'Git Desktop-dev')
     assert.equal(getBundleID(), 'com.github.GitHubClientDev')
   })
 

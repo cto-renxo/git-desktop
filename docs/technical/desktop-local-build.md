@@ -1,4 +1,4 @@
-# Local GitHub Desktop build
+# Local Git Desktop build
 
 For development, run `yarn start` from the checkout root. It compiles development
 bundles, prepares resources without packaging, and launches the installed Electron
@@ -7,21 +7,21 @@ terminal running: renderer edits use hot reload. Restart `yarn start` after chan
 to the main process or other bundles. Development compilation uses a filesystem
 cache, so the first start is heavier than subsequent starts. Production and
 development share `out`; stop development before building production, then restart
-development afterward. Development uses the separate GitHub Desktop development
+development afterward. Development uses the separate Git Desktop development
 profile.
 
-This checkout uses the standard GitHub Desktop name, executable, application
+This checkout uses the standard Git Desktop name, executable, application
 profile, credential namespaces, and browser authentication protocols. The local
 build includes the repository folder groups, history tag layout, branch discovery,
 repository health, and folder actions from the desktop improvements work.
 
-Run `build.cmd` to compile and package the local Windows build. Close GitHub Desktop
+Run `build.cmd` to compile and package the local Windows build. Close Git Desktop
 first if it is running from this checkout. The output executable is
-`dist\GitHubDesktop-win32-x64\GitHubDesktop.exe`. Use
+`dist\GitDesktop-win32-x64\GitDesktop.exe`. Use
 `launch-github-desktop.cmd` to launch it. `build.cmd -Tests` also runs unit tests.
 
 There is no separate profile import or credential migration in this build. It uses
-the normal GitHub Desktop profile and credentials. Development builds use the
+the normal Git Desktop profile and credentials. Development builds use the
 normal development identity.
 
 Automatic updates remain disabled by default so a downloaded upstream release

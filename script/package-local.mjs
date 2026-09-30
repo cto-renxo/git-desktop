@@ -17,7 +17,7 @@ const require = createRequire(import.meta.url)
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const bundle = join(root, 'out')
 const dist = join(root, 'dist')
-const target = join(dist, 'GitHubDesktop-win32-x64')
+const target = join(dist, 'GitDesktop-win32-x64')
 if (dirname(target) !== dist || !dist.startsWith(`${root}\\`)) {
   throw new Error('The local package must stay inside this checkout')
 }
@@ -37,7 +37,7 @@ try {
   await cp(join(root, 'node_modules', 'electron', 'dist'), staging, {
     recursive: true,
   })
-  const executable = join(staging, 'GitHubDesktop.exe')
+  const executable = join(staging, 'GitDesktop.exe')
   await rename(join(staging, 'electron.exe'), executable)
   const app = join(staging, 'resources', 'app')
   await cp(bundle, app, {
@@ -64,14 +64,14 @@ try {
       CompanyName: pkg.companyName,
       FileDescription: pkg.productName,
       ProductName: pkg.productName,
-      InternalName: 'GitHubDesktop',
-      OriginalFilename: 'GitHubDesktop.exe',
+      InternalName: 'GitDesktop',
+      OriginalFilename: 'GitDesktop.exe',
     },
   })
   // The fixed target is entirely inside this checkout's dist directory.
   await rm(target, { recursive: true, force: true })
   await rename(staging, target)
-  console.log(join(target, 'GitHubDesktop.exe'))
+  console.log(join(target, 'GitDesktop.exe'))
 } finally {
   await rm(staging, { recursive: true, force: true })
 }

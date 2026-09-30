@@ -345,7 +345,7 @@ export function showTestUI(
   function showTestNoExternalEditor() {
     dispatcher.postError(
       new ExternalEditorError(
-        `No suitable editors installed for GitHub Desktop to launch. Install ${suggestedExternalEditor.name} for your platform and restart GitHub Desktop to try again.`,
+        `No suitable editors installed for Git Desktop to launch. Install ${suggestedExternalEditor.name} for your platform and restart Git Desktop to try again.`,
         { suggestDefaultEditor: true }
       )
     )

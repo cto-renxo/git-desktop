@@ -35,11 +35,11 @@ try {
     if (!(Test-Path 'node_modules\electron\dist\electron.exe')) {
         throw 'Dependencies are missing. Install them before building.'
     }
-    while (!$LaunchOnly -and (Get-Process -Name GitHubDesktop -ErrorAction SilentlyContinue)) {
+    while (!$LaunchOnly -and (Get-Process -Name GitDesktop -ErrorAction SilentlyContinue)) {
         if ($NonInteractive) {
-            throw 'Close GitHub Desktop, then rerun the build. The app is using the output files.'
+            throw 'Close Git Desktop, then rerun the build. The app is using the output files.'
         }
-        Write-Host 'Please close GitHub Desktop before building. Your app will not be stopped automatically.'
+        Write-Host 'Please close Git Desktop before building. Your app will not be stopped automatically.'
         $taskAnswer = Read-Host 'Press Enter after closing it, or type q to cancel'
         if ($taskAnswer -eq 'q') { throw 'Build cancelled.' }
     }
@@ -53,7 +53,7 @@ try {
         Invoke-Yarn -Arguments @('package:local')
     }
 
-    $taskExecutable = Join-Path $taskRoot 'dist\GitHubDesktop-win32-x64\GitHubDesktop.exe'
+    $taskExecutable = Join-Path $taskRoot 'dist\GitDesktop-win32-x64\GitDesktop.exe'
     if (!(Test-Path -LiteralPath $taskExecutable)) { throw 'Packaging did not produce the executable.' }
     Write-Host "Executable ready: $taskExecutable" -ForegroundColor Green
     if (!$NoLaunch) {
@@ -65,7 +65,7 @@ try {
             for ($taskAttempt = 0; $taskAttempt -lt 20; $taskAttempt++) {
                 Start-Sleep -Milliseconds 500
                 $taskAppProcess.Refresh()
-                $taskWindowProcess = Get-Process -Name GitHubDesktop -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 -and ($_.Id -eq $taskAppProcess.Id -or $_.Path -eq $taskExecutable -or [string]::IsNullOrEmpty($_.Path)) } | Select-Object -First 1
+                $taskWindowProcess = Get-Process -Name GitDesktop -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 -and ($_.Id -eq $taskAppProcess.Id -or $_.Path -eq $taskExecutable -or [string]::IsNullOrEmpty($_.Path)) } | Select-Object -First 1
                 if ($taskWindowProcess) {
                     $taskWindowOpened = $true
                     break
@@ -77,11 +77,11 @@ try {
                 } else {
                     $taskLaunchFailure = 'The app process started, but no window appeared within 10 seconds. It has been left running.'
                 }
-                throw "$taskLaunchFailure Build is available at $taskExecutable. Retry without rebuilding using -LaunchOnly. App logs are under the GitHub Desktop profile's logs folder."
+                throw "$taskLaunchFailure Build is available at $taskExecutable. Retry without rebuilding using -LaunchOnly. App logs are under the Git Desktop profile's logs folder."
             }
-            Write-Host "GitHub Desktop window opened (PID $($taskWindowProcess.Id))."
+            Write-Host "Git Desktop window opened (PID $($taskWindowProcess.Id))."
             if ($taskWindowProcess.Id -ne $taskAppProcess.Id -and [string]::IsNullOrEmpty($taskWindowProcess.Path)) {
-                Write-Warning 'An existing GitHub Desktop window was found, but Windows did not expose its executable path. Close all GitHub Desktop instances and retry -LaunchOnly to verify this build specifically.'
+                Write-Warning 'An existing Git Desktop window was found, but Windows did not expose its executable path. Close all Git Desktop instances and retry -LaunchOnly to verify this build specifically.'
             }
         } finally {
             [Environment]::SetEnvironmentVariable('ELECTRON_RUN_AS_NODE', $taskRunAsNode, 'Process')
