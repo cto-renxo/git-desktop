@@ -152,23 +152,7 @@ while (pending.length > 0 && !signal?.aborted) {
 
 If nested repositories inside a repository are a requirement, keep descending but keep the depth cap and the extended skip list.
 
-### 4. Health fetch runs without an account
-
-`app/src/lib/repository-health.ts` (`6ced712`). `performHealthOperation` calls `fetch(repository, remote)` with no account. `envForRemoteOperation(remote.url)` then has no token to inject, so private GitHub remotes that rely on Desktop's stored credentials fail with authentication errors. It works on a machine whose credential manager holds a token; it fails elsewhere.
-
-Fix: resolve the account the same way `GitStore.fetch` does and pass it through.
-
-```typescript
-// performHealthOperation(path, operation, signal, getAccountForRemote)
-for (const remote of remotes) {
-  const account = await getAccountForRemote(remote.url)
-  await fetch(repository, remote, account ?? undefined)
-}
-```
-
-In `AppStore._performRepositoryHealthOperation`, pass a resolver built on `this.accounts` with `getAccountForEndpoint` on the remote host.
-
-### 5. "Open in Visual Studio Code" is always shown
+### 4. "Open in Visual Studio Code" is always shown
 
 `app/src/ui/lib/folder-actions.ts` (`6ced712`). The menu item is unconditional. When VS Code is not installed, `openInSelectedExternalEditor` fails after the click.
 
@@ -200,7 +184,6 @@ The list comes from `getAvailableEditors()` in `lib/editors`; cache it once on s
 | User fetch overrides configured refspecs | `lib/git/fetch.ts`, `stores/git-store.ts` (`6ced712`) | Every manual Fetch passes `--refmap=` and `+refs/heads/*:refs/remotes/<remote>/*`, fetches all configured remotes, and `--prune` prunes against the full branch set. Single-branch clones start pulling every branch. Fetch also reloads remotes and branches afterwards. | Add the wide refspec only when `remote.<name>.fetch` is narrower than `refs/heads/*`; read it with `git config --get-all remote.<name>.fetch`. |
 | Health run locks every repository | `app-store.ts` `_performRepositoryHealthOperation` | Sets `isPushPullFetchInProgress` on all registered repositories for the whole run; push/pull/fetch is disabled app-wide until it finishes or is aborted. | Lock only the repositories in the run; release each as its worker finishes. |
 | WSL detection always on | `feature-flag.ts` `enableWSLDetection` | Returns `true` regardless of the beta-features setting. | Return `enableBetaFeatures() \|\| __WIN32__` or keep the flag. |
-| Repository menu always enabled | `menu-update.ts`, `'repository'` removed from `repositoryScopedIDs` | The menu opens with no repository selected so Repository Health is reachable. Its children need their own gating. | Verify `push`, `pull`, `fetch`, `open-in-shell`, `open-working-directory`, `view-repository-on-github`, `repository-settings` are all in the scoped list. |
 | axe DevTools extension removed | `main-process/main.ts` (`62d8d8c`) | Only React DevTools is installed in development. | Restore the `axeDevTools` entry. |
 | Auto-update off unless `DESKTOP_UPDATES_URL` is set | `script/dist-info.ts`, `update-store.ts`, `about.tsx` (`ee614fc`) | Correct for a fork. Side effect: `shouldMakeDelta()` returns `false`, so production and beta builds ship no delta packages. | Fine as is; note it in `docs/technical/desktop-local-build.md`. |
 
@@ -220,7 +203,7 @@ const counts = await Promise.all(
 )
 ```
 
-Wrap in a limiter (`p-limit` is a transitive dependency, or a 6-wide manual pool) if process count matters.
+Wrap in a limiter (`p-limit` ^2.2.0 is already a direct dependency in `app/package.json`) if process count matters.
 
 ### Removed folder groups leave stale collapsed state
 
@@ -236,7 +219,7 @@ setStringArray(
 
 ### Error strings carry an `Error:` prefix
 
-`repository-health.ts`, `unmerged-branches-dialog.tsx`, `app-store.ts`. `String(error)` on an `Error` yields `Error: message`. Use the existing `errorMessage(error)` helper wherever `String(error)` appears.
+`unmerged-branches-dialog.tsx` (line 59) and `app-store.ts` `_performRepositoryHealthOperation` (`errors: [String(error)]`). `String(error)` on an `Error` yields `Error: message`. `repository-health.ts` already uses its `errorMessage` helper; export it and use it in these two places.
 
 ### Hard reset and mixed reset share one stat counter
 
@@ -253,12 +236,11 @@ Stated in the script; fine for now. The `finally` `rm(staging)` after a successf
 ## Suggested fix order
 
 - [ ] Dev server exit on rebuild errors (bug 1) — blocks daily work, 5-line fix
-- [ ] Health fetch without account (bug 4) — breaks the feature on private remotes
 - [ ] Submodule import + scan depth/skip list (bugs 2, 3) — same area, fix together
-- [ ] VS Code menu item gating (bug 5)
-- [ ] Confirm the six behaviour changes; adjust fetch refspec and menu gating if needed
+- [ ] VS Code menu item gating (bug 4)
+- [ ] Confirm the five behaviour changes; adjust the fetch refspec if needed
 - [ ] `String(error)` → `errorMessage(error)`; stale collapsed keys; hard-reset stat
 - [ ] Verify the gitignore submodule commit is pushed before sharing the branch
 - [ ] Parallelise unmerged-branch counts when convenient
 
-Looked correct, no change needed: the hard-reset confirmation flow, the linked-worktree exclusion in folder import, the fast-forward-only guards in `safelyUpdateHealthWorktree`, folder-group path matching on Windows, and the local packaging script's staging and rename.
+Looked correct, no change needed: health fetch authentication (`envForRemoteOperation` supplies the credential trampoline, same as `GitStore.fetchRemotes`), Repository menu child gating with no repository selected (`push`/`pull`/`fetch` and the rest are disabled in `getRepositoryMenuBuilder`), the hard-reset confirmation flow, the linked-worktree exclusion in folder import, the fast-forward-only guards in `safelyUpdateHealthWorktree`, folder-group path matching on Windows, and the local packaging script's staging and rename.
