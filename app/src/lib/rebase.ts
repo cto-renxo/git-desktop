@@ -37,7 +37,7 @@ export function formatRebaseValue(value: number) {
  * branch should be a force push
  */
 export function getCurrentBranchForcePushState(
-  branchesState: IBranchesState,
+  branchesState: Pick<IBranchesState, 'tip' | 'forcePushBranches'>,
   aheadBehind: IAheadBehind | null
 ): ForcePushBranchState {
   if (aheadBehind === null) {
@@ -47,8 +47,8 @@ export function getCurrentBranchForcePushState(
 
   const { ahead, behind } = aheadBehind
 
-  if (behind === 0 || ahead === 0) {
-    // no a diverged branch to force push
+  if (behind === 0) {
+    // Nothing on the remote needs to be replaced.
     return ForcePushBranchState.NotAvailable
   }
 
@@ -60,6 +60,12 @@ export function getCurrentBranchForcePushState(
     const { sha } = tip.branch.tip
     const foundEntry = forcePushBranches.get(localBranchName)
     canForcePushBranch = foundEntry === sha
+  }
+
+  // A hard reset can leave the branch only behind its upstream. Offer force
+  // push only when Desktop recorded an intentional history rewrite at this tip.
+  if (ahead === 0 && !canForcePushBranch) {
+    return ForcePushBranchState.NotAvailable
   }
 
   return canForcePushBranch

@@ -5965,7 +5965,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
       RepositorySectionTab.Changes
     )
 
-    await gitStore.performFailableOperation(() =>
+    const didReset = await gitStore.performFailableOperation(() =>
       reset(
         repository,
         hard ? GitResetMode.Hard : GitResetMode.Mixed,
@@ -5973,7 +5973,14 @@ export class AppStore extends TypedBaseStore<IAppState> {
       )
     )
 
-    // this.statsStore.recordCommitUndone(isWorkingDirectoryClean)
+    const { tip, forcePushBranches } = repositoryState.branchesState
+    if (didReset === true && hard && tip.kind === TipState.Valid) {
+      const updatedMap = new Map(forcePushBranches)
+      updatedMap.set(tip.branch.nameWithoutRemote, commit.sha)
+      this.repositoryStateCache.updateBranchesState(repository, () => ({
+        forcePushBranches: updatedMap,
+      }))
+    }
 
     return this._refreshRepository(repository)
   }
