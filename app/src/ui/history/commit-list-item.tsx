@@ -178,7 +178,11 @@ export class CommitListItem extends React.PureComponent<
   }
 
   private renderCommitIndicators() {
-    const tagIndicator = renderCommitListItemTags(this.props.commit.tags)
+    const tags = this.props.commit.tags
+    const tagIndicator =
+      tags.length > 0 ? (
+        <CommitListItemTags key={tags.join('\n')} tags={tags} />
+      ) : null
     const unpushedIndicator = this.renderUnpushedIndicator()
 
     if (tagIndicator || unpushedIndicator) {
@@ -248,19 +252,70 @@ function renderRelativeTime(date: Date, preferAbsoluteDates: boolean) {
   )
 }
 
-function renderCommitListItemTags(tags: ReadonlyArray<string>) {
-  if (tags.length === 0) {
-    return null
-  }
-  const [firstTag] = tags
+function CommitListItemTags({
+  tags,
+}: {
+  readonly tags: ReadonlyArray<string>
+}) {
+  const listRef = React.useRef<HTMLSpanElement>(null)
+  const [scrollTop, setScrollTop] = React.useState(0)
+  const hasOverflow = tags.length > 3
+
+  const stopPropagation = React.useCallback((event: React.MouseEvent) => {
+    event.stopPropagation()
+  }, [])
+  const scrollUp = React.useCallback((event: React.MouseEvent) => {
+    event.stopPropagation()
+    listRef.current?.scrollBy({ top: -14 })
+  }, [])
+  const scrollDown = React.useCallback((event: React.MouseEvent) => {
+    event.stopPropagation()
+    listRef.current?.scrollBy({ top: 14 })
+  }, [])
+  const onScroll = React.useCallback(
+    (event: React.UIEvent<HTMLSpanElement>) => {
+      setScrollTop(event.currentTarget.scrollTop)
+    },
+    []
+  )
   return (
-    <span className="tag-indicator">
-      <span className="tag-name" key={firstTag}>
-        {firstTag}
-      </span>
-      {tags.length > 1 && (
-        <span key={tags.length} className="tag-indicator-more" />
+    <TooltippedContent
+      tagName="span"
+      className="tag-indicator"
+      tooltip={tags.join('\n')}
+      disabled={enableAccessibleListToolTips()}
+    >
+      {hasOverflow && (
+        <span className="tag-scroll-controls">
+          <button
+            type="button"
+            aria-label="Scroll tags up"
+            disabled={scrollTop === 0}
+            onMouseDown={stopPropagation}
+            onDoubleClick={stopPropagation}
+            onClick={scrollUp}
+          >
+            <Octicon symbol={octicons.chevronUp} />
+          </button>
+          <button
+            type="button"
+            aria-label="Scroll tags down"
+            disabled={scrollTop >= (tags.length - 3) * 14 - 1}
+            onMouseDown={stopPropagation}
+            onDoubleClick={stopPropagation}
+            onClick={scrollDown}
+          >
+            <Octicon symbol={octicons.chevronDown} />
+          </button>
+        </span>
       )}
-    </span>
+      <span className="tag-scroll-list" ref={listRef} onScroll={onScroll}>
+        {tags.map(tag => (
+          <span className="tag-row" key={tag}>
+            <span className="tag-name">{tag}</span>
+          </span>
+        ))}
+      </span>
+    </TooltippedContent>
   )
 }

@@ -23,9 +23,6 @@
         color: var(--list-item-selected-badge-color);
         box-shadow: 1px 0 0 var(--box-selected-background-color);
       }
-      .tag-indicator-more {
-        background: var(--list-item-selected-badge-background-color);
-      }
 
       background-color: var(--box-selected-background-color);
     }
@@ -58,10 +55,6 @@
           background: var(--list-item-selected-active-badge-background-color);
           color: var(--list-item-selected-active-badge-color);
           box-shadow: 1px 0 0 var(--box-selected-active-background-color);
-        }
-        .tag-indicator-more {
-          background: var(--list-item-selected-active-badge-background-color);
-          color: var(--list-item-selected-active-badge-color);
         }
 
         background-color: var(--box-selected-active-background-color);
@@ -144,18 +137,77 @@
     justify-content: flex-end;
     margin-left: var(--spacing);
     color: var(--list-item-badge-color);
-    height: 16px;
+    align-items: center;
     line-height: 16px;
     max-width: 50%;
 
     .tag-indicator {
       display: flex;
+      align-items: stretch;
+      gap: 1px;
       flex: 0 1 auto;
-      height: 100%;
       min-width: 0;
 
+      .tag-scroll-list {
+        display: block;
+        min-width: 0;
+        max-height: 42px;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior-y: contain;
+        scrollbar-width: none;
+
+        &::-webkit-scrollbar {
+          display: none;
+        }
+      }
+
+      .tag-scroll-controls {
+        display: flex;
+        flex: 0 0 14px;
+        flex-direction: column;
+        justify-content: space-between;
+
+        button {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 14px;
+          height: 14px;
+          padding: 0;
+          border: 0;
+          border-radius: 2px;
+          background: transparent;
+          color: inherit;
+          cursor: pointer;
+
+          &:disabled {
+            opacity: 0.3;
+            cursor: default;
+          }
+
+          &:focus-visible {
+            outline: 1px solid currentColor;
+            outline-offset: -1px;
+          }
+
+          .octicon {
+            width: 12px;
+            height: 12px;
+          }
+        }
+      }
+
+      .tag-row {
+        display: flex;
+        justify-content: flex-end;
+        min-width: 0;
+        height: 14px;
+        line-height: 14px;
+      }
+
       .tag-name {
-        flex: 1 1 auto;
+        flex: 0 1 auto;
         padding: 0 var(--spacing-half);
         border-radius: var(--border-radius);
         background: var(--list-item-badge-background-color);
@@ -163,19 +215,11 @@
         z-index: 3;
         @include ellipsis;
       }
-
-      .tag-indicator-more {
-        flex: 0 0 auto;
-        width: var(--spacing);
-        margin-left: -5px;
-        border-radius: 0 var(--border-radius) var(--border-radius) 0;
-        background: var(--list-item-badge-background-color);
-      }
     }
 
     .unpushed-indicator {
       flex: 0 0 auto;
-      height: 100%;
+      height: 16px;
       border-radius: 8px;
       padding: 0 var(--spacing-half);
       background: var(--list-item-badge-background-color);
