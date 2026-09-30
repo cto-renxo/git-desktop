@@ -2609,10 +2609,11 @@ export class App extends React.Component<IAppProps, IAppState> {
         )
       }
       case PopupType.WarningBeforeReset: {
-        const { repository, commit } = popup
+        const { repository, commit, hard } = popup
         return (
           <WarningBeforeReset
             key="warning-before-reset"
+            hard={hard}
             dispatcher={this.props.dispatcher}
             repository={repository}
             commit={commit}

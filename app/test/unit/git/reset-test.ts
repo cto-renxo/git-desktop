@@ -27,6 +27,35 @@ describe('git/reset', () => {
       const status = await getStatusOrThrow(repository)
       assert.equal(status.workingDirectory.files.length, 0)
     })
+
+    it('rewinds commits and discards staged and unstaged changes', async t => {
+      const testRepoPath = await setupFixtureRepository(t, 'test-repo')
+      const repository = new Repository(testRepoPath, -1, null, false)
+      const filePath = path.join(testRepoPath, 'README.md')
+      const target = await exec(['rev-parse', 'HEAD'], testRepoPath)
+      assert.equal(target.exitCode, 0)
+      const targetSHA = target.stdout.trim()
+
+      await writeFile(filePath, 'Committed change\n')
+      assert.equal((await exec(['add', 'README.md'], testRepoPath)).exitCode, 0)
+      assert.equal(
+        (await exec(['commit', '-m', 'Change README'], testRepoPath)).exitCode,
+        0
+      )
+      await writeFile(filePath, 'Staged change\n')
+      assert.equal((await exec(['add', 'README.md'], testRepoPath)).exitCode, 0)
+      await writeFile(filePath, 'Unstaged change\n')
+
+      await reset(repository, GitResetMode.Hard, targetSHA)
+
+      const head = await exec(['rev-parse', 'HEAD'], testRepoPath)
+      assert.equal(head.exitCode, 0)
+      assert.equal(head.stdout.trim(), targetSHA)
+      assert.equal(
+        (await getStatusOrThrow(repository)).workingDirectory.files.length,
+        0
+      )
+    })
   })
 
   describe('resetPaths', () => {

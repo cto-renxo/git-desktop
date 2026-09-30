@@ -379,6 +379,7 @@ export type PopupDetail =
       type: PopupType.WarningBeforeReset
       repository: Repository
       commit: Commit
+      hard?: boolean
     }
   | {
       type: PopupType.InvalidatedToken

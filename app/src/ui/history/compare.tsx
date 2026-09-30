@@ -256,6 +256,7 @@ export class CompareSidebar extends React.Component<
         onViewCommitOnGitHub={this.props.onViewCommitOnGitHub}
         onUndoCommit={this.onUndoCommit}
         onResetToCommit={this.onResetToCommit}
+        onHardResetToCommit={this.onHardResetToCommit}
         onRevertCommit={
           ableToRevertCommit(this.props.compareState.formState)
             ? this.props.onRevertCommit
@@ -618,6 +619,15 @@ export class CompareSidebar extends React.Component<
 
   private onResetToCommit = (commit: Commit) => {
     this.props.dispatcher.resetToCommit(this.props.repository, commit)
+  }
+
+  private onHardResetToCommit = (commit: Commit) => {
+    this.props.dispatcher.resetToCommit(
+      this.props.repository,
+      commit,
+      true,
+      true
+    )
   }
 
   private onCreateBranch = (commit: CommitOneLine) => {

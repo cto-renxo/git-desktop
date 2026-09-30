@@ -80,6 +80,7 @@ interface ICommitListProps {
 
   /** Callback to fire to reset to a given commit in the current repository */
   readonly onResetToCommit?: (commit: Commit) => void
+  readonly onHardResetToCommit?: (commit: Commit) => void
 
   /** Callback to fire to revert a given commit in the current repository */
   readonly onRevertCommit?: (commit: Commit) => void
@@ -778,6 +779,14 @@ export class CommitList extends React.Component<
         }
       },
       enabled: canBeResetTo && this.props.onResetToCommit !== undefined,
+    })
+
+    items.push({
+      label: __DARWIN__ ? 'Hard Reset to Commit…' : 'Hard reset to commit…',
+      action: () => this.props.onHardResetToCommit?.(commit),
+      enabled:
+        this.props.canResetToCommits === true &&
+        this.props.onHardResetToCommit !== undefined,
     })
 
     items.push({

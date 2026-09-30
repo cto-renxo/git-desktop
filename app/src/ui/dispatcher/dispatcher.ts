@@ -979,13 +979,15 @@ export class Dispatcher {
   public resetToCommit(
     repository: Repository,
     commit: Commit,
-    showConfirmationDialog: boolean = true
+    showConfirmationDialog: boolean = true,
+    hard: boolean = false
   ): Promise<void> {
     this.statsStore.increment('resetToCommitCount')
     return this.appStore._resetToCommit(
       repository,
       commit,
-      showConfirmationDialog
+      showConfirmationDialog,
+      hard
     )
   }
 
