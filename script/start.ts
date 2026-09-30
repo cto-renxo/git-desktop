@@ -65,11 +65,15 @@ if (process.env.NODE_ENV === 'production') {
   const rendererConfig = configs[1]
   const compiler = webpack(rendererConfig)
   reportCompilation(compiler, 'Renderer')
+  let firstBuild = true
   compiler.hooks.done.tap('ReportDevelopmentErrors', stats => {
     if (stats.hasErrors()) {
       console.error(stats.toString({ all: false, errors: true }))
-      process.exit(1)
+      if (firstBuild) {
+        process.exit(1)
+      }
     }
+    firstBuild = false
   })
   const port = getPortOrDefault()
   const message = 'Could not find public path from configuration'
