@@ -69,10 +69,10 @@ export function buildDefaultMenuTemplate({
 
   if (__DARWIN__) {
     template.push({
-      label: 'GitHub Desktop',
+      label: __APP_NAME__,
       submenu: [
         {
-          label: 'About GitHub Desktop',
+          label: `About ${__APP_NAME__}`,
           click: emit('show-about'),
           id: 'about',
         },
@@ -107,6 +107,11 @@ export function buildDefaultMenuTemplate({
   const fileMenu: Electron.MenuItemConstructorOptions = {
     label: __DARWIN__ ? 'File' : '&File',
     submenu: [
+      {
+        label: 'New Folder Group…',
+        id: 'new-folder-group',
+        click: emit('new-folder-group'),
+      },
       {
         label: __DARWIN__ ? 'New Repository…' : 'New &repository…',
         id: 'new-repository',
@@ -316,6 +321,12 @@ export function buildDefaultMenuTemplate({
     id: 'repository',
     submenu: [
       {
+        label: 'Repository Health…',
+        id: 'repository-health',
+        click: emit('repository-health'),
+      },
+      separator,
+      {
         id: 'push',
         label: pushLabel,
         accelerator: 'CmdOrCtrl+P',
@@ -329,7 +340,7 @@ export function buildDefaultMenuTemplate({
       },
       {
         id: 'fetch',
-        label: __DARWIN__ ? 'Fetch' : '&Fetch',
+        label: __DARWIN__ ? 'Fetch All Remotes' : '&Fetch all remotes',
         accelerator: 'CmdOrCtrl+Shift+T',
         click: emit('fetch'),
       },
@@ -601,7 +612,7 @@ export function buildDefaultMenuTemplate({
         ...helpItems,
         separator,
         {
-          label: '&About GitHub Desktop',
+          label: `&About ${__APP_NAME__}`,
           click: emit('show-about'),
           id: 'about',
         },

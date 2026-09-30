@@ -11,6 +11,9 @@ import {
   CommitOptions,
 } from '../lib/app-state'
 import { Dispatcher } from './dispatcher'
+import { Shell } from '../lib/shells'
+import { getFolderActions } from './lib/folder-actions'
+import { writeClipboardText } from './main-process-proxy'
 import { AppStore, GitHubUserStore, IssuesStore } from '../lib/stores'
 import { assertNever } from '../lib/fatal-error'
 import { shell } from '../lib/app-shell'
@@ -44,6 +47,8 @@ import { CloningRepository } from '../models/cloning-repository'
 import { TitleBar, ZoomInfo, FullScreenInfo } from './window'
 
 import { RepositoriesList } from './repositories-list'
+import { RepositoryHealthDialog } from './repositories-list/repository-health-dialog'
+import { UnmergedBranchesDialog } from './branches/unmerged-branches-dialog'
 import { RepositoryView } from './repository'
 import { RenameBranch } from './rename-branch'
 import { DeleteBranch, DeleteRemoteBranch } from './delete-branch'
@@ -189,7 +194,9 @@ import { PullRequestComment } from './notifications/pull-request-comment'
 import { UnknownAuthors } from './unknown-authors/unknown-authors-dialog'
 import { UnsupportedOSBannerDismissedAtKey } from './banners/os-version-no-longer-supported-banner'
 import { offsetFromNow } from '../lib/offset-from'
-import { getNumber } from '../lib/local-storage'
+import { getNumber, getStringArray, setStringArray } from '../lib/local-storage'
+import { normalizeFolderGroups } from './repositories-list/folder-groups'
+import { showOpenDialog } from './main-process-proxy'
 import { IconPreviewDialog } from './octicons/icon-preview-dialog'
 import { isCertificateErrorSuppressedFor } from '../lib/suppress-certificate-error'
 import { webUtils } from 'electron'
@@ -265,6 +272,10 @@ export const bannerTransitionTimeout = { enter: 500, exit: 400 }
  */
 const ReadyDelay = 100
 export class App extends React.Component<IAppProps, IAppState> {
+  private folderGroups = normalizeFolderGroups(
+    getStringArray('repository-folder-groups')
+  )
+
   private loading = true
 
   /**
@@ -479,6 +490,10 @@ export class App extends React.Component<IAppProps, IAppState> {
         return this.showCreateWorktree()
       case 'remove-repository':
         return this.removeRepository(this.getRepository())
+      case 'new-folder-group':
+        return this.onAddFolderGroup()
+      case 'repository-health':
+        return this.showRepositoryHealth()
       case 'create-repository':
         return this.showCreateRepository()
       case 'rename-branch':
@@ -822,6 +837,26 @@ export class App extends React.Component<IAppProps, IAppState> {
 
   private showAddLocalRepo = () => {
     return this.props.dispatcher.showPopup({ type: PopupType.AddRepository })
+  }
+
+  private onFolderGroupsChanged = (folders: ReadonlyArray<string>) => {
+    this.folderGroups = normalizeFolderGroups(folders)
+    setStringArray('repository-folder-groups', this.folderGroups)
+    this.forceUpdate()
+  }
+
+  private onAddFolderGroup = async () => {
+    const folder = await showOpenDialog({
+      title: 'Choose a folder to group repositories',
+      properties: ['openDirectory'],
+    })
+    if (folder !== null) {
+      this.onFolderGroupsChanged([...this.folderGroups, folder])
+    }
+  }
+
+  private showRepositoryHealth = () => {
+    return this.props.dispatcher.showPopup({ type: PopupType.RepositoryHealth })
   }
 
   private showCreateRepository = () => {
@@ -1847,6 +1882,23 @@ export class App extends React.Component<IAppProps, IAppState> {
             onDismissed={onPopupDismissedFn}
             isCredentialHelperSignIn={popup.isCredentialHelperSignIn}
             credentialHelperUrl={popup.credentialHelperUrl}
+          />
+        )
+      case PopupType.UnmergedBranches:
+        return (
+          <UnmergedBranchesDialog
+            repository={popup.repository}
+            onDismissed={onPopupDismissedFn}
+          />
+        )
+      case PopupType.RepositoryHealth:
+        return (
+          <RepositoryHealthDialog
+            repositories={this.state.repositories.filter(
+              (r): r is Repository => r instanceof Repository
+            )}
+            dispatcher={this.props.dispatcher}
+            onDismissed={onPopupDismissedFn}
           />
         )
       case PopupType.AddRepository:
@@ -3352,6 +3404,10 @@ export class App extends React.Component<IAppProps, IAppState> {
     const repositories = this.state.repositories
     return (
       <RepositoriesList
+        folderGroups={this.folderGroups}
+        onAddFolderGroup={this.onAddFolderGroup}
+        onFolderGroupsChanged={this.onFolderGroupsChanged}
+        getFolderActions={this.getFolderActions}
         filterText={filterText}
         onFilterTextChanged={this.onRepositoryFilterTextChanged}
         selectedRepository={selectedRepository}
@@ -3396,8 +3452,38 @@ export class App extends React.Component<IAppProps, IAppState> {
     this.props.dispatcher.openShell(repository.path)
   }
 
+  private openFolderShell = (path: string, shell?: Shell) => {
+    if (shell === undefined) {
+      this.props.dispatcher.openShell(path)
+    } else {
+      this.props.dispatcher.openInSpecificShell(path, shell)
+    }
+  }
+
+  private getFolderActions = (path: string, missing = false) =>
+    getFolderActions({
+      path,
+      missing,
+      editorLabel: this.externalEditorLabel,
+      shellLabel: this.state.useCustomShell
+        ? 'Custom Shell'
+        : this.state.selectedShell,
+      openShell: this.openFolderShell,
+      openEditor: this.openFolderEditor,
+      reveal: path => shell.showFolderContents(path),
+      copy: writeClipboardText,
+    })
+
   private openFileInExternalEditor = (fullPath: string) => {
     this.props.dispatcher.openInExternalEditor(fullPath)
+  }
+
+  private openFolderEditor = (path: string, editor?: string) => {
+    if (editor === undefined) {
+      this.props.dispatcher.openInExternalEditor(path)
+    } else {
+      this.props.dispatcher.openInSelectedExternalEditor(path, editor, null)
+    }
   }
 
   private openInExternalEditor = (
@@ -3556,6 +3642,7 @@ export class App extends React.Component<IAppProps, IAppState> {
     }
 
     const items = generateRepositoryListContextMenu({
+      getFolderActions: this.getFolderActions,
       onRemoveRepository: this.removeRepository,
       onShowRepository: this.showRepository,
       onOpenInShell: this.openInShell,
@@ -3760,6 +3847,7 @@ export class App extends React.Component<IAppProps, IAppState> {
 
     return (
       <BranchDropdown
+        getFolderActions={this.getFolderActions}
         dispatcher={this.props.dispatcher}
         isOpen={isOpen}
         branchDropdownWidth={this.state.branchDropdownWidth}
@@ -3812,6 +3900,7 @@ export class App extends React.Component<IAppProps, IAppState> {
 
     return (
       <WorktreeDropdown
+        getFolderActions={this.getFolderActions}
         dispatcher={this.props.dispatcher}
         repository={repository}
         worktrees={worktrees}
@@ -3969,10 +4058,10 @@ export class App extends React.Component<IAppProps, IAppState> {
             state.askForConfirmationOnCommitFilteredChanges
           }
           accounts={state.accounts}
+          externalEditorLabel={this.externalEditorLabel}
           isExternalEditorAvailable={
             state.useCustomEditor || state.selectedExternalEditor !== null
           }
-          externalEditorLabel={this.externalEditorLabel}
           resolvedExternalEditor={state.resolvedExternalEditor}
           onOpenInExternalEditor={this.onOpenInExternalEditor}
           appMenu={state.appMenuState[0]}

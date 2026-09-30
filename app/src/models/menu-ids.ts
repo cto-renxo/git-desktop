@@ -31,6 +31,8 @@ export type MenuIDs =
   | 'remove-repository'
   | 'new-repository'
   | 'add-local-repository'
+  | 'new-folder-group'
+  | 'repository-health'
   | 'clone-repository'
   | 'about'
   | 'create-pull-request'

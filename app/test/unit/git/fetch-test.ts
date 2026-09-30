@@ -1,7 +1,10 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert'
 import { Repository } from '../../../src/models/repository'
-import { setupFixtureRepository } from '../../helpers/repositories'
+import {
+  setupFixtureRepository,
+  setupEmptyRepository,
+} from '../../helpers/repositories'
 import {
   getBranches,
   getBranchesDifferingFromUpstream,
@@ -10,12 +13,61 @@ import { Branch } from '../../../src/models/branch'
 import { fastForwardBranches } from '../../../src/lib/git'
 import * as Path from 'path'
 import { readFile } from 'fs/promises'
+import { fetch } from '../../../src/lib/git/fetch'
+import { git } from '../../../src/lib/git/core'
 
 function branchWithName(branches: ReadonlyArray<Branch>, name: string) {
   return branches.filter(branch => branch.name === name)[0]
 }
 
 describe('git/fetch', () => {
+  it('discovers new remote branches even with a single-branch fetch refspec', async t => {
+    const remote = await setupEmptyRepository(t)
+    const local = await setupEmptyRepository(t)
+    const config = '+refs/heads/master:refs/remotes/origin/master'
+    await git(
+      ['commit', '--allow-empty', '-m', 'initial'],
+      remote.path,
+      'testSetup'
+    )
+    await git(['remote', 'add', 'origin', remote.path], local.path, 'testSetup')
+    await git(
+      ['config', 'remote.origin.fetch', config],
+      local.path,
+      'testSetup'
+    )
+    await fetch(local, { name: 'origin', url: remote.path })
+    assert(
+      !(await getBranches(local)).some(b => b.name === 'origin/new-feature')
+    )
+    await git(['checkout', '-b', 'new-feature'], remote.path, 'testSetup')
+    await git(
+      ['commit', '--allow-empty', '-m', 'new remote work'],
+      remote.path,
+      'testSetup'
+    )
+    const remoteSha = (
+      await git(['rev-parse', 'HEAD'], remote.path, 'testSetup')
+    ).stdout.trim()
+
+    await fetch(local, { name: 'origin', url: remote.path })
+    const branch = (await getBranches(local)).find(
+      b => b.name === 'origin/new-feature'
+    )
+    assert.ok(branch, 'The newly created remote branch must be discoverable')
+    assert.equal(branch.tip.sha, remoteSha)
+    assert.equal(
+      (
+        await git(
+          ['config', '--get', 'remote.origin.fetch'],
+          local.path,
+          'testSetup'
+        )
+      ).stdout.trim(),
+      config
+    )
+  })
+
   describe('fastForwardBranches', () => {
     it('fast-forwards branches using fetch', async t => {
       const testRepoPath = await setupFixtureRepository(

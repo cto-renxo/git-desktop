@@ -14,6 +14,7 @@ import { Resizable } from '../resizable'
 import { enableResizingToolbarButtons } from '../../lib/feature-flag'
 
 interface IWorktreeDropdownProps {
+  readonly getFolderActions: (path: string) => ReadonlyArray<IMenuItem>
   readonly dispatcher: Dispatcher
   readonly repository: Repository
   readonly worktrees: ReadonlyArray<WorktreeEntry>
@@ -53,6 +54,7 @@ export class WorktreeDropdown extends React.Component<
 
     const items = generateWorktreeContextMenuItems({
       path: worktree.path,
+      folderActions: this.props.getFolderActions(worktree.path),
       isMainWorktree: worktree.type === 'main',
       isLocked: worktree.isLocked,
       onRenameWorktree: this.onRenameWorktree,
@@ -96,6 +98,7 @@ export class WorktreeDropdown extends React.Component<
 
     const items = generateWorktreeContextMenuItems({
       path: currentWorktree.path,
+      folderActions: this.props.getFolderActions(currentWorktree.path),
       isMainWorktree: isMain,
       isLocked: currentWorktree.isLocked,
       onRemoveWorktree: isMain ? undefined : this.onRemoveWorktree,

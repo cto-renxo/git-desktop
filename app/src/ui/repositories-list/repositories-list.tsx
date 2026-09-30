@@ -16,27 +16,31 @@ import { Button } from '../lib/button'
 import { Octicon } from '../octicons'
 import * as octicons from '../octicons/octicons.generated'
 import { showContextualMenu } from '../../lib/menu-item'
-import { IMenuItem } from '../../lib/menu-item'
 import { PopupType } from '../../models/popup'
 import { encodePathAsUrl } from '../../lib/path'
 import { TooltippedContent } from '../lib/tooltipped-content'
 import memoizeOne from 'memoize-one'
 import { KeyboardShortcut } from '../keyboard-shortcut/keyboard-shortcut'
+import { IMenuItem } from '../../lib/menu-item'
 import { generateRepositoryListContextMenu } from '../repositories-list/repository-list-item-context-menu'
 import { enableWorktreeSupport } from '../../lib/feature-flag'
 import { SectionFilterList } from '../lib/section-filter-list'
 import { assertNever } from '../../lib/fatal-error'
 import { IAheadBehind } from '../../models/branch'
 import { getStringArray, setStringArray } from '../../lib/local-storage'
-import { normalizeFolderGroups } from './folder-groups'
-import { showOpenDialog } from '../main-process-proxy'
 
-const FolderGroupsKey = 'repository-folder-groups'
 const CollapsedFolderGroupsKey = 'collapsed-repository-folder-groups'
 
 const BlankSlateImage = encodePathAsUrl(__dirname, 'static/empty-no-repo.svg')
 
 interface IRepositoriesListProps {
+  readonly folderGroups: ReadonlyArray<string>
+  readonly onAddFolderGroup: () => Promise<void>
+  readonly onFolderGroupsChanged: (folders: ReadonlyArray<string>) => void
+  readonly getFolderActions?: (
+    path: string,
+    missing: boolean
+  ) => ReadonlyArray<IMenuItem>
   readonly selectedRepository: Repositoryish | null
   readonly repositories: ReadonlyArray<Repositoryish>
   readonly recentRepositories: ReadonlyArray<number>
@@ -85,7 +89,6 @@ interface IRepositoriesListProps {
 
 interface IRepositoriesListState {
   readonly collapsedFolderGroups: ReadonlySet<string>
-  readonly folderGroups: ReadonlyArray<string>
   readonly newRepositoryMenuExpanded: boolean
   readonly selectedItem: IRepositoryListItem | null
 }
@@ -158,7 +161,6 @@ export class RepositoriesList extends React.Component<
     super(props)
 
     this.state = {
-      folderGroups: normalizeFolderGroups(getStringArray(FolderGroupsKey)),
       collapsedFolderGroups: new Set(getStringArray(CollapsedFolderGroupsKey)),
       newRepositoryMenuExpanded: false,
       selectedItem: null,
@@ -305,6 +307,7 @@ export class RepositoriesList extends React.Component<
           className="filter-list-group-header folder-group-toggle"
           ariaExpanded={!collapsed}
           tooltip={label}
+          onContextMenu={this.onFolderGroupsClick}
           onClick={this.getFolderGroupClickHandler(group)}
           onKeyDown={this.onFolderGroupKeyDown}
           disabled={this.props.filterText.length > 0}
@@ -347,6 +350,7 @@ export class RepositoriesList extends React.Component<
     event.preventDefault()
 
     const items = generateRepositoryListContextMenu({
+      getFolderActions: this.props.getFolderActions,
       onRemoveRepository: this.props.onRemoveRepository,
       onShowRepository: this.props.onShowRepository,
       onOpenInShell: this.props.onOpenInShell,
@@ -385,7 +389,7 @@ export class RepositoriesList extends React.Component<
       this.props.repositories,
       this.props.localRepositoryStateLookup,
       this.props.recentRepositories,
-      this.state.folderGroups
+      this.props.folderGroups
     )
 
     // So there's two types of selection at play here. There's the repository
@@ -399,12 +403,6 @@ export class RepositoriesList extends React.Component<
 
     return (
       <div className="repository-list">
-        <Button
-          className="folder-groups-button"
-          onClick={this.onFolderGroupsClick}
-        >
-          Folder groups…
-        </Button>
         <SectionFilterList<IRepositoryListItem, RepositoryListGroup>
           rowHeight={RowHeight}
           selectedItem={selectedItem}
@@ -419,7 +417,7 @@ export class RepositoriesList extends React.Component<
           renderNoItems={this.renderNoItems}
           groups={groups}
           invalidationProps={{
-            folderGroups: this.state.folderGroups,
+            folderGroups: this.props.folderGroups,
             collapsedFolderGroups: this.state.collapsedFolderGroups,
             repositories: this.props.repositories,
             filterText: this.props.filterText,
@@ -437,30 +435,14 @@ export class RepositoriesList extends React.Component<
     this.setState({ selectedItem })
   }
 
-  private updateFolderGroups = (folders: ReadonlyArray<string>) => {
-    const folderGroups = normalizeFolderGroups(folders)
-    setStringArray(FolderGroupsKey, folderGroups)
-    this.setState({ folderGroups, selectedItem: null })
-  }
-
-  private onAddFolderGroup = async () => {
-    const folder = await showOpenDialog({
-      title: 'Choose a folder to group repositories',
-      properties: ['openDirectory'],
-    })
-    if (folder !== null) {
-      this.updateFolderGroups([...this.state.folderGroups, folder])
-    }
-  }
-
   private onFolderGroupsClick = () => {
     const items: IMenuItem[] = [
-      { label: 'Add folder group…', action: this.onAddFolderGroup },
-      ...this.state.folderGroups.map(folder => ({
+      { label: 'New Folder Group…', action: this.props.onAddFolderGroup },
+      ...this.props.folderGroups.map(folder => ({
         label: `Remove folder group: ${folder}`,
         action: () =>
-          this.updateFolderGroups(
-            this.state.folderGroups.filter(value => value !== folder)
+          this.props.onFolderGroupsChanged(
+            this.props.folderGroups.filter(value => value !== folder)
           ),
       })),
     ]
@@ -472,11 +454,12 @@ export class RepositoriesList extends React.Component<
       <Button
         className="new-repository-button"
         onClick={this.onNewRepositoryButtonClick}
+        ariaLabel="Add repository or folder group"
+        tooltip="Add repository or folder group"
         ariaExpanded={this.state.newRepositoryMenuExpanded}
         onKeyDown={this.onNewRepositoryButtonKeyDown}
       >
-        Add
-        <Octicon symbol={octicons.triangleDown} />
+        <Octicon symbol={octicons.plus} />
       </Button>
     )
   }
@@ -515,20 +498,10 @@ export class RepositoriesList extends React.Component<
 
   private onNewRepositoryButtonClick = () => {
     const items: IMenuItem[] = [
-      {
-        label: __DARWIN__ ? 'Clone Repository…' : 'Clone repository…',
-        action: this.onCloneRepository,
-      },
-      {
-        label: __DARWIN__ ? 'Create New Repository…' : 'Create new repository…',
-        action: this.onCreateNewRepository,
-      },
-      {
-        label: __DARWIN__
-          ? 'Add Existing Repository…'
-          : 'Add existing repository…',
-        action: this.onAddExistingRepository,
-      },
+      { label: 'New Folder Group…', action: this.props.onAddFolderGroup },
+      { label: 'New Repo…', action: this.onCreateNewRepository },
+      { label: 'Add Local Repo…', action: this.onAddExistingRepository },
+      { label: 'Clone Repo…', action: this.onCloneRepository },
     ]
 
     this.setState({ newRepositoryMenuExpanded: true })

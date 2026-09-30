@@ -1,4 +1,9 @@
 import { Disposable } from 'event-kit'
+import {
+  HealthOperation,
+  IRepositoryHealth,
+  IHealthOperationResult,
+} from '../../lib/repository-health'
 
 import {
   IAPIOrganization,
@@ -180,6 +185,20 @@ export class Dispatcher {
     paths: ReadonlyArray<string>
   ): Promise<ReadonlyArray<Repository>> {
     return this.appStore._addRepositories(paths)
+  }
+
+  public performRepositoryHealthOperation(
+    repositories: ReadonlyArray<IRepositoryHealth>,
+    operation: HealthOperation,
+    signal: AbortSignal,
+    onResult: (result: IHealthOperationResult) => void
+  ): Promise<void> {
+    return this.appStore._performRepositoryHealthOperation(
+      repositories,
+      operation,
+      signal,
+      onResult
+    )
   }
 
   /**
@@ -1622,6 +1641,11 @@ export class Dispatcher {
         path,
       })
     }
+  }
+
+  /** Open an explicitly chosen shell without changing the preferred shell. */
+  public openInSpecificShell(path: string, shell: Shell): Promise<void> {
+    return this.appStore._openShell(path, shell)
   }
 
   /**

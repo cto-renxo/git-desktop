@@ -22,8 +22,72 @@ import {
 } from '../helpers/repository-scaffolding'
 import { BranchType } from '../../src/models/branch'
 import { TestStatsStore } from '../helpers/test-stats-store'
+import { groupBranches } from '../../src/ui/branches/group-branches'
+import { git } from '../../src/lib/git/core'
 
 describe('GitStore', () => {
+  it('refreshes the branch picker after new branches are created on multiple remotes', async t => {
+    const local = await setupEmptyRepository(t)
+    const origin = await setupEmptyRepository(t)
+    const extra = await setupEmptyRepository(t)
+    for (const [name, remote] of [
+      ['origin', origin],
+      ['extra', extra],
+    ] as const) {
+      await git(
+        ['commit', '--allow-empty', '-m', name],
+        remote.path,
+        'testSetup'
+      )
+      await git(['remote', 'add', name, remote.path], local.path, 'testSetup')
+    }
+    const store = new GitStore(local, shell, new TestStatsStore())
+    await store.loadRemotes()
+    await store.loadBranches()
+    await store.fetch(false)
+    for (const remote of [origin, extra]) {
+      await git(['checkout', '-b', 'created-later'], remote.path, 'testSetup')
+      await git(
+        ['commit', '--allow-empty', '-m', 'remote work'],
+        remote.path,
+        'testSetup'
+      )
+    }
+    assert(!store.allBranches.some(b => b.name.endsWith('/created-later')))
+    await store.fetch(false)
+    const pickerNames = groupBranches(
+      store.defaultBranch,
+      null,
+      store.allBranches,
+      store.recentBranches
+    ).flatMap(group => group.items.map(item => item.branch.name))
+    assert(pickerNames.includes('origin/created-later'))
+    assert(pickerNames.includes('extra/created-later'))
+
+    await git(['checkout', 'master'], extra.path, 'testSetup')
+    await git(['branch', '-D', 'created-later'], extra.path, 'testSetup')
+    await store.fetch(false)
+    assert(!store.allBranches.some(b => b.name === 'extra/created-later'))
+    assert(store.allBranches.some(b => b.name === 'origin/created-later'))
+  })
+
+  it('fetches every configured remote on a foreground fetch', async t => {
+    const repo = await setupEmptyRepository(t)
+    await exec(['remote', 'add', 'origin', repo.path], repo.path)
+    await exec(['remote', 'add', 'extra', repo.path], repo.path)
+    const store = new GitStore(repo, shell, new TestStatsStore())
+    const fetched: string[] = []
+    t.mock.method(store, 'fetchRemote', async (remote: { name: string }) => {
+      fetched.push(remote.name)
+    })
+    await store.fetch(false)
+    assert.deepStrictEqual(fetched.sort(), ['extra', 'origin'])
+    await exec(['remote', 'add', 'later', repo.path], repo.path)
+    fetched.length = 0
+    await store.fetch(false)
+    assert.deepStrictEqual(fetched.sort(), ['extra', 'later', 'origin'])
+  })
+
   describe('loadCommitBatch', () => {
     it('includes HEAD when loading commits', async t => {
       const path = await setupFixtureRepository(

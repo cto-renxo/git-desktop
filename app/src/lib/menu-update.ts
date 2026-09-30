@@ -136,6 +136,8 @@ const allMenuIds: ReadonlyArray<MenuIDs> = [
   'new-repository',
   'add-local-repository',
   'clone-repository',
+  'new-folder-group',
+  'repository-health',
   'about',
   'create-pull-request',
   'preview-pull-request',
@@ -238,7 +240,6 @@ function getRepositoryMenuBuilder(state: IAppState): MenuStateBuilder {
   // always disabled if we're not.
   const repositoryScopedIDs: ReadonlyArray<MenuIDs> = [
     'branch',
-    'repository',
     'remove-repository',
     'open-in-shell',
     'open-working-directory',
@@ -413,6 +414,8 @@ function getInWelcomeFlowBuilder(inWelcomeFlow: boolean): MenuStateBuilder {
     'new-repository',
     'add-local-repository',
     'clone-repository',
+    'new-folder-group',
+    'repository-health',
     'preferences',
     'about',
   ]

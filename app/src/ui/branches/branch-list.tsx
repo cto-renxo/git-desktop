@@ -17,7 +17,7 @@ import {
 import { NoBranches } from './no-branches'
 import { SelectionDirection, ClickSource } from '../lib/list'
 import { generateBranchContextMenuItems } from './branch-list-item-context-menu'
-import { showContextualMenu } from '../../lib/menu-item'
+import { IMenuItem, showContextualMenu } from '../../lib/menu-item'
 import { SectionFilterList } from '../lib/section-filter-list'
 import memoizeOne from 'memoize-one'
 import { getAuthors } from '../../lib/git/log'
@@ -27,6 +27,7 @@ import { formatDate } from '../../lib/format-date'
 const RowHeight = 30
 
 interface IBranchListProps {
+  readonly folderActions?: ReadonlyArray<IMenuItem>
   readonly repository: Repository
 
   /**
@@ -300,6 +301,12 @@ export class BranchList extends React.Component<
     const { branch } = item
 
     const items = generateBranchContextMenuItems({
+      // Only the checked-out branch represents this folder's contents.
+      folderActions:
+        branch.name === this.props.currentBranch?.name &&
+        branch.type === this.props.currentBranch.type
+          ? this.props.folderActions
+          : undefined,
       branch,
       onRenameBranch,
       onDeleteBranch,

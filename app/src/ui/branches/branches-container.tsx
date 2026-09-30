@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { IMenuItem } from '../../lib/menu-item'
 
 import { PullRequest } from '../../models/pull-request'
 import {
@@ -41,6 +42,7 @@ import { Emoji } from '../../lib/emoji'
 import classNames from 'classnames'
 
 interface IBranchesContainerProps {
+  readonly folderActions?: ReadonlyArray<IMenuItem>
   readonly dispatcher: Dispatcher
   readonly repository: Repository
   readonly selectedTab: BranchesTab
@@ -128,6 +130,12 @@ export class BranchesContainer extends React.Component<
     return (
       <div className={classes}>
         {this.renderTabBar()}
+        <Button
+          className="unmerged-branches-button"
+          onClick={this.onShowUnmergedBranches}
+        >
+          Unmerged branches…
+        </Button>
         {this.renderSelectedTab()}
         {this.renderMergeButtonRow()}
         {this.renderPullRequestQuickView()}
@@ -156,6 +164,13 @@ export class BranchesContainer extends React.Component<
         underlineLinks={this.props.underlineLinks}
       />
     )
+  }
+
+  private onShowUnmergedBranches = () => {
+    this.props.dispatcher.showPopup({
+      type: PopupType.UnmergedBranches,
+      repository: this.props.repository,
+    })
   }
 
   private onMouseEnterPullRequestQuickView = () => {
@@ -274,6 +289,7 @@ export class BranchesContainer extends React.Component<
       case BranchesTab.Branches:
         return (
           <BranchList
+            folderActions={this.props.folderActions}
             repository={this.props.repository}
             defaultBranch={this.props.defaultBranch}
             currentBranch={this.props.currentBranch}

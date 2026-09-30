@@ -967,8 +967,8 @@ export class GitStore extends BaseStore {
   }
 
   /**
-   * Fetch the default, current, and upstream remotes, using the given account for
-   * authentication.
+   * Fetch all configured remotes for user-initiated operations. Background
+   * operations only fetch the current, default, and fork upstream remotes.
    *
    * @param account          - The account to use for authentication if needed.
    * @param backgroundTask   - Was the fetch done as part of a background task?
@@ -999,12 +999,33 @@ export class GitStore extends BaseStore {
       remotes.set(this.upstreamRemote.name, this.upstreamRemote)
     }
 
+    if (!backgroundTask) {
+      // Read configuration afresh so remotes added outside Desktop are included.
+      // Fetch individually to retain each remote's authentication and proxy.
+      const configuredRemotes = await getRemotes(this.repository)
+      const configuredNames = new Set(configuredRemotes.map(r => r.name))
+      for (const name of remotes.keys()) {
+        if (!configuredNames.has(name)) {
+          remotes.delete(name)
+        }
+      }
+      for (const remote of configuredRemotes) {
+        remotes.set(remote.name, remote)
+      }
+    }
+
     if (remotes.size > 0) {
       await this.fetchRemotes(
         [...remotes.values()],
         backgroundTask,
         progressCallback
       )
+    }
+
+    if (!backgroundTask) {
+      // Publish new and pruned remote branches to the branch picker immediately.
+      await this.loadRemotes()
+      await this.loadBranches()
     }
 
     // check the upstream ref against the current branch to see if there are

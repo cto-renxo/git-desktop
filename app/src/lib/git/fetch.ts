@@ -8,6 +8,7 @@ import { envForRemoteOperation } from './environment'
 
 async function getFetchArgs(
   remote: string,
+  isBackgroundTask: boolean,
   progressCallback?: (progress: IFetchProgress) => void
 ) {
   return [
@@ -15,7 +16,13 @@ async function getFetchArgs(
     ...(progressCallback ? ['--progress'] : []),
     '--prune',
     '--recurse-submodules=on-demand',
+    // User-initiated fetches must discover every branch, including in clones
+    // whose configured fetch refspec only covers a single branch. An empty
+    // refmap prevents configured mappings from redirecting these updates.
+    ...(!isBackgroundTask ? ['--refmap='] : []),
+    '--',
     remote,
+    ...(!isBackgroundTask ? [`+refs/heads/*:refs/remotes/${remote}/*`] : []),
   ]
 }
 
@@ -83,7 +90,11 @@ export async function fetch(
     progressCallback({ kind, title, value: 0, remote: remote.name })
   }
 
-  const args = await getFetchArgs(remote.name, progressCallback)
+  const args = await getFetchArgs(
+    remote.name,
+    isBackgroundTask,
+    progressCallback
+  )
 
   await git(args, repository.path, 'fetch', opts)
 }

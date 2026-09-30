@@ -71,8 +71,8 @@ export class PushPullButtonDropDown extends React.Component<IPushPullButtonDropD
     switch (type) {
       case DropdownItemType.Fetch:
         return {
-          title: `Fetch ${remoteName}`,
-          description: `Fetch the latest changes from ${remoteName}`,
+          title: 'Fetch all remotes',
+          description: 'Fetch the latest changes from every configured remote',
           action: this.props.fetch,
           icon: syncClockwise,
         }

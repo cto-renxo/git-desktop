@@ -10,6 +10,10 @@ import {
 
 interface IRepositoryListItemContextMenuConfig {
   repository: Repositoryish
+  getFolderActions?: (
+    path: string,
+    missing: boolean
+  ) => ReadonlyArray<IMenuItem>
   shellLabel: string | undefined
   externalEditorLabel: string | undefined
   askForConfirmationOnRemoveRepository: boolean
@@ -45,31 +49,37 @@ export const generateRepositoryListContextMenu = (
       label: __DARWIN__ ? 'Copy Repo Name' : 'Copy repo name',
       action: () => writeClipboardText(repository.name),
     },
-    {
-      label: __DARWIN__ ? 'Copy Repo Path' : 'Copy repo path',
-      action: () => writeClipboardText(repository.path),
-    },
+    ...(config.getFolderActions === undefined
+      ? [
+          {
+            label: __DARWIN__ ? 'Copy Repo Path' : 'Copy repo path',
+            action: () => writeClipboardText(repository.path),
+          },
+        ]
+      : []),
     { type: 'separator' },
     {
       label: 'View on GitHub',
       action: () => config.onViewOnGitHub(repository),
       enabled: github,
     },
-    {
-      label: openInShell,
-      action: () => config.onOpenInShell(repository),
-      enabled: !missing,
-    },
-    {
-      label: RevealInFileManagerLabel,
-      action: () => config.onShowRepository(repository),
-      enabled: !missing,
-    },
-    {
-      label: openInExternalEditor,
-      action: () => config.onOpenInExternalEditor(repository),
-      enabled: !missing,
-    },
+    ...(config.getFolderActions?.(repository.path, missing) ?? [
+      {
+        label: openInShell,
+        action: () => config.onOpenInShell(repository),
+        enabled: !missing,
+      },
+      {
+        label: RevealInFileManagerLabel,
+        action: () => config.onShowRepository(repository),
+        enabled: !missing,
+      },
+      {
+        label: openInExternalEditor,
+        action: () => config.onOpenInExternalEditor(repository),
+        enabled: !missing,
+      },
+    ]),
     { type: 'separator' },
     {
       label: config.askForConfirmationOnRemoveRepository ? 'Remove…' : 'Remove',

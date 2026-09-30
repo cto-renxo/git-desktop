@@ -263,6 +263,8 @@ import { RetryAction, RetryActionType } from '../../models/retry-actions'
 import {
   Default as DefaultShell,
   findShellOrDefault,
+  getAvailableShells,
+  ShellError,
   launchCustomShell,
   launchShell,
   parse as parseShell,
@@ -348,6 +350,13 @@ import { sendNonFatalException } from '../helpers/non-fatal-exception'
 import { getDefaultDir } from '../../ui/lib/default-dir'
 import { WorkflowPreferences } from '../../models/workflow-preferences'
 import { RepositoryIndicatorUpdater } from './helpers/repository-indicator-updater'
+import {
+  HealthOperation,
+  IRepositoryHealth,
+  IHealthOperationResult,
+  performHealthOperation,
+  getHealthRepositoryIdentity,
+} from '../repository-health'
 import { isAttributableEmailFor } from '../email'
 import { TrashNameLabel } from '../../ui/lib/context-menu'
 import { GitError as DugiteError } from 'dugite'
@@ -5424,6 +5433,81 @@ export class AppStore extends TypedBaseStore<IAppState> {
     }
   }
 
+  /** Keep background fetches out of a bulk operation, including linked checkouts. */
+  public async _performRepositoryHealthOperation(
+    repositories: ReadonlyArray<IRepositoryHealth>,
+    operation: HealthOperation,
+    signal: AbortSignal,
+    onResult: (result: IHealthOperationResult) => void
+  ): Promise<void> {
+    const registered = this.repositories
+    if (
+      registered.some(r => {
+        const state = this.repositoryStateCache.get(r)
+        return (
+          state.isPushPullFetchInProgress ||
+          state.isCommitting ||
+          state.checkoutProgress !== null
+        )
+      })
+    ) {
+      throw new Error(
+        'Wait for the current Git operation to finish, then try again.'
+      )
+    }
+    for (const repository of registered) {
+      this.repositoryStateCache.update(repository, () => ({
+        isPushPullFetchInProgress: true,
+      }))
+    }
+    this.emitUpdate()
+    const pending = [
+      ...new Map(repositories.map(r => [r.commonDirectory, r])).values(),
+    ]
+    try {
+      const worker = async () => {
+        while (pending.length > 0 && !signal.aborted) {
+          const repository = pending.shift()!
+          try {
+            const identity = await getHealthRepositoryIdentity(repository.path)
+            if (identity.commonDirectory !== repository.commonDirectory) {
+              throw new Error(
+                'The repository at this path changed. Check repositories again before continuing.'
+              )
+            }
+            onResult(
+              await performHealthOperation(repository.path, operation, signal)
+            )
+          } catch (error) {
+            onResult({
+              path: repository.path,
+              messages: [],
+              errors: [String(error)],
+            })
+          }
+        }
+      }
+      await Promise.all(
+        Array.from({ length: Math.min(4, pending.length) }, worker)
+      )
+    } finally {
+      for (const repository of registered) {
+        this.repositoryStateCache.update(repository, () => ({
+          isPushPullFetchInProgress: false,
+        }))
+      }
+      this.emitUpdate()
+      const paths = new Set(
+        repositories.flatMap(r => r.worktrees.map(w => w.path))
+      )
+      for (const repository of registered) {
+        if (paths.has(repository.path)) {
+          await this._refreshRepository(repository)
+        }
+      }
+    }
+  }
+
   private async withPushPullFetch(
     repository: Repository,
     fn: () => Promise<void>
@@ -7573,12 +7657,21 @@ export class AppStore extends TypedBaseStore<IAppState> {
   }
 
   /** This shouldn't be called directly. See `Dispatcher`. */
-  public async _openShell(path: string) {
+  public async _openShell(path: string, requestedShell?: Shell) {
     this.statsStore.increment('openShellCount')
     const { useCustomShell, customShell } = this.getState()
 
     try {
-      if (useCustomShell && customShell) {
+      if (requestedShell !== undefined) {
+        const available = await getAvailableShells()
+        const match = available.find(s => s.shell === requestedShell)
+        if (match === undefined) {
+          throw new ShellError(
+            `${requestedShell} is not available. Install it and restart GitHub Desktop to try again.`
+          )
+        }
+        await launchShell(match, path, error => this._pushError(error))
+      } else if (useCustomShell && customShell) {
         await launchCustomShell(customShell, path, error =>
           this._pushError(error)
         )

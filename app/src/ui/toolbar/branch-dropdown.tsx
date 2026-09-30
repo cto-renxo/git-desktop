@@ -27,11 +27,15 @@ import { TooltipTarget } from '../lib/tooltip'
 import { BranchType, Branch } from '../../models/branch'
 import { PopupType } from '../../models/popup'
 import { generateBranchContextMenuItems } from '../branches/branch-list-item-context-menu'
-import { showContextualMenu } from '../../lib/menu-item'
+import { IMenuItem, showContextualMenu } from '../../lib/menu-item'
 import { Emoji } from '../../lib/emoji'
 import { enableResizingToolbarButtons } from '../../lib/feature-flag'
 
 interface IBranchDropdownProps {
+  readonly getFolderActions: (
+    path: string,
+    missing: boolean
+  ) => ReadonlyArray<IMenuItem>
   readonly dispatcher: Dispatcher
 
   /** The currently selected repository. */
@@ -100,6 +104,7 @@ export class BranchDropdown extends React.Component<IBranchDropdownProps> {
     const currentBranch = tip.kind === TipState.Valid ? tip.branch : null
     return (
       <BranchesContainer
+        folderActions={this.getFolderActions()}
         allBranches={branchesState.allBranches}
         recentBranches={branchesState.recentBranches}
         currentBranch={currentBranch}
@@ -165,6 +170,15 @@ export class BranchDropdown extends React.Component<IBranchDropdownProps> {
       description = 'Detached HEAD'
     } else if (tip.kind === TipState.Valid) {
       title = tooltip = tip.branch.name
+      const { upstream, upstreamWithoutRemote } = tip.branch
+      if (
+        upstream !== null &&
+        upstreamWithoutRemote !== null &&
+        upstreamWithoutRemote !== tip.branch.name
+      ) {
+        title = `${tip.branch.name} → ${upstream}`
+        tooltip = `Current branch is ${tip.branch.name}, tracking ${upstream}`
+      }
     } else {
       return assertNever(tip, `Unknown tip state: ${tipKind}`)
     }
@@ -307,12 +321,14 @@ export class BranchDropdown extends React.Component<IBranchDropdownProps> {
     const { tip } = this.props.repositoryState.branchesState
 
     if (tip.kind !== TipState.Valid) {
+      showContextualMenu(this.getFolderActions())
       return
     }
 
     const { branch } = tip
 
     const items = generateBranchContextMenuItems({
+      folderActions: this.getFolderActions(),
       branch,
       onRenameBranch: this.onRenameBranch,
       onViewBranchOnGitHub:
@@ -327,6 +343,11 @@ export class BranchDropdown extends React.Component<IBranchDropdownProps> {
     })
 
     showContextualMenu(items)
+  }
+
+  private getFolderActions = () => {
+    const { repository, getFolderActions } = this.props
+    return getFolderActions(repository.path, repository.missing)
   }
 
   private getBranchWithName(branchName: string): Branch | undefined {

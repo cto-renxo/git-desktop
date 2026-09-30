@@ -456,7 +456,7 @@ export class PushPullButton extends React.Component<
     }
 
     if (tipState === TipState.Unborn) {
-      return this.fetchButton(remoteName, lastFetched, this.fetch)
+      return this.fetchButton(lastFetched, this.fetch)
     }
 
     if (tipState === TipState.Detached) {
@@ -475,7 +475,7 @@ export class PushPullButton extends React.Component<
     const { ahead, behind } = aheadBehind
 
     if (ahead === 0 && behind === 0 && numTagsToPush === 0) {
-      return this.fetchButton(remoteName, lastFetched, this.fetch)
+      return this.fetchButton(lastFetched, this.fetch)
     }
 
     if (forcePushBranchState === ForcePushBranchState.Recommended) {
@@ -586,12 +586,8 @@ export class PushPullButton extends React.Component<
     )
   }
 
-  private fetchButton(
-    remoteName: string,
-    lastFetched: Date | null,
-    onClick: () => void
-  ) {
-    const title = `Fetch ${remoteName}`
+  private fetchButton(lastFetched: Date | null, onClick: () => void) {
+    const title = 'Fetch all remotes'
     return (
       <ToolbarButton
         {...this.defaultButtonProps()}

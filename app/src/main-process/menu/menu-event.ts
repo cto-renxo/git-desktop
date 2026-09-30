@@ -29,6 +29,8 @@ export type MenuEvent =
   | 'compare-on-github'
   | 'branch-on-github'
   | 'view-repository-on-github'
+  | 'new-folder-group'
+  | 'repository-health'
   | 'clone-repository'
   | 'show-about'
   | 'go-to-commit-message'

@@ -1,0 +1,117 @@
+.repository-list {
+  flex-direction: column;
+
+  > .filter-list {
+    min-height: 0;
+  }
+}
+
+.branches-container .unmerged-branches-button {
+  margin: var(--spacing);
+  flex-shrink: 0;
+}
+
+#repository-health,
+#unmerged-branches {
+  width: 820px;
+  max-width: calc(100vw - 40px);
+
+  .dialog-content {
+    overflow-y: auto;
+    max-height: 65vh;
+  }
+
+  .dialog-footer {
+    flex-direction: row;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    row-gap: var(--spacing);
+  }
+
+  .health-scope,
+  .health-filter,
+  .health-repository-heading {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing);
+    flex-wrap: wrap;
+  }
+
+  label {
+    display: inline-flex;
+    gap: var(--spacing-half);
+    align-items: center;
+    margin: 0;
+  }
+
+  .health-description,
+  .health-path {
+    color: var(--text-secondary-color);
+    overflow-wrap: anywhere;
+  }
+
+  .health-scope {
+    align-items: flex-end;
+
+    .select-component {
+      flex: 0 1 220px;
+    }
+  }
+
+  .health-repository {
+    border-top: 1px solid var(--box-border-color);
+    padding: var(--spacing-double) 0;
+  }
+
+  .health-repository-heading {
+    justify-content: space-between;
+    margin-bottom: var(--spacing-half);
+  }
+
+  details {
+    margin-top: var(--spacing);
+  }
+
+  summary {
+    cursor: pointer;
+    overflow-wrap: anywhere;
+  }
+
+  .health-worktree-content,
+  .health-operation-results > div {
+    margin: var(--spacing) 0 var(--spacing) var(--spacing-double);
+  }
+
+  pre {
+    max-height: 180px;
+    overflow: auto;
+    user-select: text;
+    padding: var(--spacing);
+    border: 1px solid var(--box-border-color);
+    border-radius: var(--border-radius);
+  }
+
+  .health-error {
+    color: var(--form-error-text-color);
+    overflow-wrap: anywhere;
+    user-select: text;
+  }
+
+  .health-branches {
+    padding-left: var(--spacing-double);
+    overflow-wrap: anywhere;
+  }
+}
+
+#unmerged-branches {
+  label {
+    display: flex;
+    margin-bottom: var(--spacing);
+  }
+  .unmerged-branch-results {
+    padding-left: var(--spacing-double);
+    li {
+      margin-bottom: var(--spacing);
+    }
+  }
+}

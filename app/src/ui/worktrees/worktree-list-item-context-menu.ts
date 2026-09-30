@@ -4,6 +4,7 @@ import { IMenuItem } from '../../lib/menu-item'
 import { writeClipboardText } from '../main-process-proxy'
 
 interface IWorktreeContextMenuConfig {
+  readonly folderActions?: ReadonlyArray<IMenuItem>
   readonly path: string
   readonly isMainWorktree: boolean
   readonly isLocked: boolean
@@ -32,12 +33,18 @@ export function generateWorktreeContextMenuItems(
     action: () => writeClipboardText(name),
   })
 
-  items.push({
-    label: __DARWIN__ ? 'Copy Worktree Path' : 'Copy worktree path',
-    action: () => writeClipboardText(path),
-  })
+  if (config.folderActions === undefined) {
+    items.push({
+      label: __DARWIN__ ? 'Copy Worktree Path' : 'Copy worktree path',
+      action: () => writeClipboardText(path),
+    })
+  }
 
   items.push({ type: 'separator' })
+
+  if (config.folderActions !== undefined) {
+    items.push(...config.folderActions, { type: 'separator' })
+  }
 
   if (onRemoveWorktree !== undefined) {
     items.push({

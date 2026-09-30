@@ -3,6 +3,7 @@ import { writeClipboardText } from '../main-process-proxy'
 import { Branch, BranchType } from '../../models/branch'
 
 interface IBranchContextMenuConfig {
+  folderActions?: ReadonlyArray<IMenuItem>
   branch: Branch
   onRenameBranch?: (branchName: string) => void
   onViewBranchOnGitHub?: () => void
@@ -61,6 +62,10 @@ export function generateBranchContextMenuItems(
   }
 
   items.push({ type: 'separator' })
+
+  if (config.folderActions !== undefined) {
+    items.push(...config.folderActions, { type: 'separator' })
+  }
 
   if (onDeleteBranch !== undefined) {
     items.push({
