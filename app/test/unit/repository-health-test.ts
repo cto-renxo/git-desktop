@@ -80,6 +80,31 @@ describe('repository health', () => {
     assert.equal(missing.errors.length, 1)
   })
 
+  it('skips generated and dependency directories regardless of case', async t => {
+    const root = await createTempDirectory(t)
+    for (const name of [
+      'Library',
+      'Temp',
+      'build',
+      'dist',
+      'target',
+      'vendor',
+      'Pods',
+      '.next',
+      '.venv',
+      'obj',
+      'bin',
+      '.plugin_symlinks',
+      '.symlinks',
+    ]) {
+      await mkdir(Path.join(root, name, 'ignored', '.git'), { recursive: true })
+    }
+    const nested = Path.join(root, 'projects', 'nested')
+    await mkdir(Path.join(nested, '.git'), { recursive: true })
+    const result = await discoverHealthRepositories(root)
+    assert.deepEqual(result.paths, [nested])
+    assert.deepEqual(result.errors, [])
+  })
   it('distinguishes an ahead branch from commits unpublished on every remote', async t => {
     const repo = await setupEmptyRepository(t)
     await run(repo.path, 'commit', '--allow-empty', '-m', 'base')

@@ -244,3 +244,17 @@ Stated in the script; fine for now. The `finally` `rm(staging)` after a successf
 - [ ] Parallelise unmerged-branch counts when convenient
 
 Looked correct, no change needed: health fetch authentication (`envForRemoteOperation` supplies the credential trampoline, same as `GitStore.fetchRemotes`), Repository menu child gating with no repository selected (`push`/`pull`/`fetch` and the rest are disabled in `getRepositoryMenuBuilder`), the hard-reset confirmation flow, the linked-worktree exclusion in folder import, the fast-forward-only guards in `safelyUpdateHealthWorktree`, folder-group path matching on Windows, and the local packaging script's staging and rename.
+
+## Fix implementation progress (2026-09-30)
+
+Work is isolated on `codex/desktop-review-fixes` in `.worktrees/desktop-review-fixes`, based on documentation commit `2e5c746142`.
+
+First batch implemented:
+
+- Renderer watch compilation errors are logged without terminating the development server after the initial compilation. Initial compilation errors still fail startup.
+- Folder import excludes submodules using `git rev-parse --show-superproject-working-tree`, preserving independent nested repositories and separate Git-directory checkouts.
+- Discovery excludes common generated/dependency directories, including Unity, Flutter, build outputs, virtual environments and plugin-link trees. Nested discovery remains supported; no arbitrary depth cutoff was added.
+
+Validation: all 16 focused repository-health and folder-import tests passed, including new regression cases for submodules and case-insensitive generated-directory exclusions. Prettier and `git diff --check` passed. A local application-dependency junction was needed for the new worktree to resolve `dugite`. Development-server behavior still needs live launch/hot-reload verification.
+
+Remaining work includes installed-editor menu gating, health-operation lock scope, collapsed-state cleanup, error-message cleanup, and the policy/publication decisions identified above. No fixes to authentication or menu child gating are required by this review.

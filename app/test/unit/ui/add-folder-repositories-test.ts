@@ -58,6 +58,33 @@ describe('adding repositories from folder groups', () => {
     }
   })
 
+  it('skips submodules while retaining independent nested repositories', async t => {
+    const root = await createTempDirectory(t)
+    const source = await createTempDirectory(t)
+    await checkout(root)
+    await checkout(source)
+    await run(source, 'commit', '--allow-empty', '-m', 'submodule base')
+    await run(
+      root,
+      '-c',
+      'protocol.file.allow=always',
+      'submodule',
+      'add',
+      source,
+      'module'
+    )
+    const nested = Path.join(root, 'nested')
+    await checkout(nested)
+    const added: string[] = []
+    const errors = await addFolderRepositories(root, [], async paths => {
+      added.push(...paths)
+    })
+    assert.deepEqual(new Set(added), new Set([root, nested]))
+    assert.deepEqual(errors, [])
+    await addFolderRepositories(Path.join(root, 'module'), [], async () => {
+      assert.fail('A directly selected submodule must also be skipped')
+    })
+  })
   it('imports a main checkout with a separate Git directory', async t => {
     const root = await createTempDirectory(t)
     const metadata = Path.join(await createTempDirectory(t), 'metadata')

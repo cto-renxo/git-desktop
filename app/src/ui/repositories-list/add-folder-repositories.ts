@@ -26,6 +26,15 @@ export async function addFolderRepositories(
         errors.push(path + ': Not an accessible working repository')
         continue
       }
+      // Ask Git rather than assuming a particular metadata-directory layout.
+      const superproject = await git(
+        ['rev-parse', '--show-superproject-working-tree'],
+        path,
+        'folderRepositoryImport'
+      )
+      if (superproject.stdout.trim().length > 0) {
+        continue
+      }
       const commonDirectory = (
         await git(
           ['rev-parse', '--path-format=absolute', '--git-common-dir'],
