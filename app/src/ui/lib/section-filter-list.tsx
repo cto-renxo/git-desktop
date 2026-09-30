@@ -82,6 +82,10 @@ interface ISectionFilterListProps<T extends IFilterListItem, GroupIdentifier> {
     identifier: GroupIdentifier
   ) => JSX.Element | null
 
+  /** Hide a group's items while retaining its header. Search reveals matches. */
+  // eslint-disable-next-line react/no-unused-prop-types
+  readonly isGroupCollapsed?: (identifier: GroupIdentifier) => boolean
+
   /** Called to render content before/above the filter and list. */
   readonly renderPreList?: () => JSX.Element | null
 
@@ -742,7 +746,13 @@ function createStateUpdate<T extends IFilterListItem, GroupIdentifier>(
       groupRows.push({ kind: 'group', identifier: group.identifier })
     }
 
-    for (const { item, matches } of items) {
+    const collapsed =
+      !filter &&
+      props.renderGroupHeader !== undefined &&
+      group.showHeader !== false &&
+      props.isGroupCollapsed?.(group.identifier) === true
+
+    for (const { item, matches } of collapsed ? [] : items) {
       if (selectedItem && item.id === selectedItem.id) {
         selectedRow = {
           section,

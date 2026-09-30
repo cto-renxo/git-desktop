@@ -27,6 +27,12 @@ import { enableWorktreeSupport } from '../../lib/feature-flag'
 import { SectionFilterList } from '../lib/section-filter-list'
 import { assertNever } from '../../lib/fatal-error'
 import { IAheadBehind } from '../../models/branch'
+import { getStringArray, setStringArray } from '../../lib/local-storage'
+import { normalizeFolderGroups } from './folder-groups'
+import { showOpenDialog } from '../main-process-proxy'
+
+const FolderGroupsKey = 'repository-folder-groups'
+const CollapsedFolderGroupsKey = 'collapsed-repository-folder-groups'
 
 const BlankSlateImage = encodePathAsUrl(__dirname, 'static/empty-no-repo.svg')
 
@@ -78,6 +84,8 @@ interface IRepositoriesListProps {
 }
 
 interface IRepositoriesListState {
+  readonly collapsedFolderGroups: ReadonlySet<string>
+  readonly folderGroups: ReadonlyArray<string>
   readonly newRepositoryMenuExpanded: boolean
   readonly selectedItem: IRepositoryListItem | null
 }
@@ -122,14 +130,16 @@ export class RepositoriesList extends React.Component<
     (
       repositories: ReadonlyArray<Repositoryish> | null,
       localRepositoryStateLookup: ReadonlyMap<number, ILocalRepositoryState>,
-      recentRepositories: ReadonlyArray<number>
+      recentRepositories: ReadonlyArray<number>,
+      folderGroups: ReadonlyArray<string>
     ) =>
       repositories === null
         ? []
         : groupRepositories(
             repositories,
             localRepositoryStateLookup,
-            recentRepositories
+            recentRepositories,
+            folderGroups
           )
   )
 
@@ -148,6 +158,8 @@ export class RepositoriesList extends React.Component<
     super(props)
 
     this.state = {
+      folderGroups: normalizeFolderGroups(getStringArray(FolderGroupsKey)),
+      collapsedFolderGroups: new Set(getStringArray(CollapsedFolderGroupsKey)),
       newRepositoryMenuExpanded: false,
       selectedItem: null,
     }
@@ -250,13 +262,60 @@ export class RepositoriesList extends React.Component<
       return group.owner.login
     } else if (kind === 'recent') {
       return 'Recent'
+    } else if (kind === 'folder') {
+      return group.path
     } else {
       assertNever(kind, `Unknown repository group kind ${kind}`)
     }
   }
 
+  private isGroupCollapsed = (group: RepositoryListGroup) =>
+    group.kind === 'folder' &&
+    this.props.filterText.length === 0 &&
+    this.state.collapsedFolderGroups.has(getGroupKey(group))
+
+  private onFolderGroupKeyDown = (
+    event: React.KeyboardEvent<HTMLButtonElement>
+  ) => {
+    event.stopPropagation()
+  }
+
+  private getFolderGroupClickHandler =
+    (group: RepositoryListGroup) =>
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      event.stopPropagation()
+      const key = getGroupKey(group)
+      const collapsedFolderGroups = new Set(this.state.collapsedFolderGroups)
+      if (collapsedFolderGroups.has(key)) {
+        collapsedFolderGroups.delete(key)
+      } else {
+        collapsedFolderGroups.add(key)
+      }
+      setStringArray(CollapsedFolderGroupsKey, [...collapsedFolderGroups])
+      this.setState({ collapsedFolderGroups })
+    }
+
   private renderGroupHeader = (group: RepositoryListGroup) => {
     const label = this.getGroupLabel(group)
+
+    if (group.kind === 'folder') {
+      const collapsed = this.isGroupCollapsed(group)
+      return (
+        <Button
+          className="filter-list-group-header folder-group-toggle"
+          ariaExpanded={!collapsed}
+          tooltip={label}
+          onClick={this.getFolderGroupClickHandler(group)}
+          onKeyDown={this.onFolderGroupKeyDown}
+          disabled={this.props.filterText.length > 0}
+        >
+          <Octicon
+            symbol={collapsed ? octicons.triangleRight : octicons.triangleDown}
+          />
+          <span>{label}</span>
+        </Button>
+      )
+    }
 
     return (
       <TooltippedContent
@@ -325,7 +384,8 @@ export class RepositoriesList extends React.Component<
     const groups = this.getRepositoryGroups(
       this.props.repositories,
       this.props.localRepositoryStateLookup,
-      this.props.recentRepositories
+      this.props.recentRepositories,
+      this.state.folderGroups
     )
 
     // So there's two types of selection at play here. There's the repository
@@ -339,6 +399,12 @@ export class RepositoriesList extends React.Component<
 
     return (
       <div className="repository-list">
+        <Button
+          className="folder-groups-button"
+          onClick={this.onFolderGroupsClick}
+        >
+          Folder groups…
+        </Button>
         <SectionFilterList<IRepositoryListItem, RepositoryListGroup>
           rowHeight={RowHeight}
           selectedItem={selectedItem}
@@ -347,11 +413,14 @@ export class RepositoriesList extends React.Component<
           renderItem={this.renderItem}
           renderRowFocusTooltip={this.renderRowFocusTooltip}
           renderGroupHeader={this.renderGroupHeader}
+          isGroupCollapsed={this.isGroupCollapsed}
           onItemClick={this.onItemClick}
           renderPostFilter={this.renderPostFilter}
           renderNoItems={this.renderNoItems}
           groups={groups}
           invalidationProps={{
+            folderGroups: this.state.folderGroups,
+            collapsedFolderGroups: this.state.collapsedFolderGroups,
             repositories: this.props.repositories,
             filterText: this.props.filterText,
           }}
@@ -366,6 +435,36 @@ export class RepositoriesList extends React.Component<
 
   private onSelectionChanged = (selectedItem: IRepositoryListItem | null) => {
     this.setState({ selectedItem })
+  }
+
+  private updateFolderGroups = (folders: ReadonlyArray<string>) => {
+    const folderGroups = normalizeFolderGroups(folders)
+    setStringArray(FolderGroupsKey, folderGroups)
+    this.setState({ folderGroups, selectedItem: null })
+  }
+
+  private onAddFolderGroup = async () => {
+    const folder = await showOpenDialog({
+      title: 'Choose a folder to group repositories',
+      properties: ['openDirectory'],
+    })
+    if (folder !== null) {
+      this.updateFolderGroups([...this.state.folderGroups, folder])
+    }
+  }
+
+  private onFolderGroupsClick = () => {
+    const items: IMenuItem[] = [
+      { label: 'Add folder group…', action: this.onAddFolderGroup },
+      ...this.state.folderGroups.map(folder => ({
+        label: `Remove folder group: ${folder}`,
+        action: () =>
+          this.updateFolderGroups(
+            this.state.folderGroups.filter(value => value !== folder)
+          ),
+      })),
+    ]
+    showContextualMenu(items)
   }
 
   private renderPostFilter = () => {

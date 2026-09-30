@@ -13,8 +13,14 @@ import { IAheadBehind } from '../../models/branch'
 import { assertNever } from '../../lib/fatal-error'
 import { isDotCom } from '../../lib/endpoint-capabilities'
 import { Owner } from '../../models/owner'
+import {
+  findFolderGroup,
+  folderGroupKey,
+  normalizeFolderGroups,
+} from './folder-groups'
 
 export type RepositoryListGroup =
+  | { kind: 'folder'; path: string }
   | {
       kind: 'recent' | 'other'
     }
@@ -37,12 +43,14 @@ export const getGroupKey = (group: RepositoryListGroup) => {
   switch (kind) {
     case 'recent':
       return `0:recent`
+    case 'folder':
+      return `1:folder:${folderGroupKey(group.path)}`
     case 'dotcom':
-      return `1:dotcom:${group.owner.login}`
+      return `2:dotcom:${group.owner.login}`
     case 'enterprise':
-      return `2:enterprise:${group.host}`
+      return `3:enterprise:${group.host}`
     case 'other':
-      return `3:other`
+      return `4:other`
     default:
       assertNever(group, `Unknown repository group kind ${kind}`)
   }
@@ -77,11 +85,13 @@ type RepoGroupItem = { group: RepositoryListGroup; repos: Repositoryish[] }
 export function groupRepositories(
   repositories: ReadonlyArray<Repositoryish>,
   localRepositoryStateLookup: ReadonlyMap<number, ILocalRepositoryState>,
-  recentRepositories: ReadonlyArray<number>
+  recentRepositories: ReadonlyArray<number>,
+  folderGroups: ReadonlyArray<string> = []
 ): ReadonlyArray<IFilterListGroup<IRepositoryListItem, RepositoryListGroup>> {
   const includeRecentGroup = repositories.length > recentRepositoriesThreshold
   const recentSet = includeRecentGroup ? new Set(recentRepositories) : undefined
   const groups = new Map<string, RepoGroupItem>()
+  const folders = normalizeFolderGroups(folderGroups)
 
   const addToGroup = (group: RepositoryListGroup, repo: Repositoryish) => {
     const key = getGroupKey(group)
@@ -99,7 +109,13 @@ export function groupRepositories(
       addToGroup({ kind: 'recent' }, repo)
     }
 
-    addToGroup(getGroupForRepository(repo), repo)
+    const folder = findFolderGroup(repo.path, folders)
+    addToGroup(
+      folder === undefined
+        ? getGroupForRepository(repo)
+        : { kind: 'folder', path: folder },
+      repo
+    )
   }
 
   return Array.from(groups)
@@ -160,7 +176,8 @@ const toSortedListItems = (
           // already grouped by owner. If the repository is in the 'recent'
           // group and has a duplicate name in any group, we need to
           // disambiguate it.
-          ((groupNames.get(title) ?? 0) > 1 && group.kind === 'enterprise') ||
+          ((groupNames.get(title) ?? 0) > 1 &&
+            (group.kind === 'enterprise' || group.kind === 'folder')) ||
           ((allNames.get(title) ?? 0) > 1 && group.kind === 'recent'),
         aheadBehind: repoState?.aheadBehind ?? null,
         changedFilesCount: repoState?.changedFilesCount ?? 0,

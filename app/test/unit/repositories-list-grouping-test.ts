@@ -1,5 +1,10 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert'
+import * as Path from 'path'
+import {
+  normalizeFolderGroups,
+  findFolderGroup,
+} from '../../src/ui/repositories-list/folder-groups'
 import { groupRepositories } from '../../src/ui/repositories-list/group-repositories'
 import { Repository, ILocalRepositoryState } from '../../src/models/repository'
 import { CloningRepository } from '../../src/models/cloning-repository'
@@ -27,6 +32,104 @@ describe('repository list grouping', () => {
   ]
 
   const cache = new Map<number, ILocalRepositoryState>()
+
+  it('keeps Recent first, then folders, with owner fallback for unmatched repositories', () => {
+    const root = Path.resolve('folder-group-fixture')
+    const folderRepo = new Repository(
+      Path.join(root, 'project'),
+      10,
+      gitHubRepoFixture({ owner: 'me', name: 'project' }),
+      false
+    )
+    const others = Array.from(
+      { length: 7 },
+      (_, i) =>
+        new Repository(
+          Path.resolve(`outside-${i}`),
+          i,
+          gitHubRepoFixture({ owner: 'me', name: `outside-${i}` }),
+          false
+        )
+    )
+    const grouped = groupRepositories(
+      [folderRepo, ...others],
+      cache,
+      [10],
+      [root]
+    )
+    assert.deepEqual(
+      grouped.map(g => g.identifier.kind),
+      ['recent', 'folder', 'dotcom']
+    )
+    assert.deepEqual(
+      grouped[0].items.map(i => i.repository.id),
+      [10]
+    )
+    assert.deepEqual(
+      grouped[1].items.map(i => i.repository.id),
+      [10]
+    )
+    assert.equal(grouped[2].items.length, 7)
+    assert.equal(
+      groupRepositories([folderRepo], cache, [], [])[0].identifier.kind,
+      'dotcom'
+    )
+  })
+
+  it('uses the deepest folder and respects boundaries, roots, and normalized paths', () => {
+    const root = Path.resolve('folder-group-fixture')
+    const nested = Path.join(root, 'nested')
+    assert.equal(
+      findFolderGroup(Path.join(nested, 'repo'), [root, nested]),
+      nested
+    )
+    assert.equal(findFolderGroup(root + '-other', [root]), undefined)
+    assert.equal(findFolderGroup(root, [root]), root)
+    assert.equal(
+      findFolderGroup(Path.join(root, 'a', '..', 'repo'), [root]),
+      root
+    )
+    assert.equal(
+      findFolderGroup(root, [Path.parse(root).root]),
+      Path.parse(root).root
+    )
+    assert.equal(
+      normalizeFolderGroups([root, root + Path.sep, 'relative']).length,
+      1
+    )
+    if (process.platform === 'win32') {
+      assert.equal(
+        findFolderGroup('d:/REALEASY/repo', ['D:\\RealEasy\\']),
+        'D:\\RealEasy\\'
+      )
+      assert.equal(
+        findFolderGroup('E:\\RealEasy\\repo', ['D:\\RealEasy']),
+        undefined
+      )
+      assert.equal(
+        findFolderGroup('\\\\server\\share\\group\\repo', [
+          '\\\\server\\share\\group',
+        ]),
+        '\\\\server\\share\\group'
+      )
+    }
+  })
+
+  it('disambiguates equal names from different owners in a folder group', () => {
+    const root = Path.resolve('folder-group-fixture')
+    const repos = ['alice', 'bob'].map(
+      (owner, id) =>
+        new Repository(
+          Path.join(root, owner, 'repo'),
+          id,
+          gitHubRepoFixture({ owner, name: 'repo' }),
+          false
+        )
+    )
+    const grouped = groupRepositories(repos, cache, [], [root])
+    assert.equal(grouped.length, 1)
+    assert(grouped[0].items.every(item => item.needsDisambiguation))
+  })
 
   it('groups repositories by owners/Enterprise/Other', () => {
     const grouped = groupRepositories(repositories, cache, [])

@@ -223,3 +223,37 @@
     justify-content: unset;
   }
 }
+.repository-list .folder-groups-button {
+  margin: var(--spacing);
+  flex-shrink: 0;
+}
+
+.repository-list .filter-list-group-header.folder-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-half);
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+
+  .octicon {
+    flex-shrink: 0;
+  }
+
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--focus-color);
+    outline-offset: -2px;
+  }
+}
