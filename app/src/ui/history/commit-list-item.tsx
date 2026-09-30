@@ -266,11 +266,11 @@ function CommitListItemTags({
   }, [])
   const scrollUp = React.useCallback((event: React.MouseEvent) => {
     event.stopPropagation()
-    listRef.current?.scrollBy({ top: -14 })
+    listRef.current?.scrollBy({ top: -15 })
   }, [])
   const scrollDown = React.useCallback((event: React.MouseEvent) => {
     event.stopPropagation()
-    listRef.current?.scrollBy({ top: 14 })
+    listRef.current?.scrollBy({ top: 15 })
   }, [])
   const onScroll = React.useCallback(
     (event: React.UIEvent<HTMLSpanElement>) => {
@@ -300,7 +300,7 @@ function CommitListItemTags({
           <button
             type="button"
             aria-label="Scroll tags down"
-            disabled={scrollTop >= (tags.length - 3) * 14 - 1}
+            disabled={scrollTop >= (tags.length - 3) * 15 - 1}
             onMouseDown={stopPropagation}
             onDoubleClick={stopPropagation}
             onClick={scrollDown}

@@ -151,7 +151,7 @@
       .tag-scroll-list {
         display: block;
         min-width: 0;
-        max-height: 42px;
+        max-height: 44px;
         overflow-x: hidden;
         overflow-y: auto;
         overscroll-behavior-y: contain;
@@ -204,6 +204,10 @@
         min-width: 0;
         height: 14px;
         line-height: 14px;
+
+        & + .tag-row {
+          margin-top: 1px;
+        }
       }
 
       .tag-name {
