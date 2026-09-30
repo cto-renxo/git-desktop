@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { addFolderRepositories } from './repositories-list/add-folder-repositories'
 import * as Path from 'path'
 
 import { TransitionGroup, CSSTransition } from 'react-transition-group'
@@ -275,6 +276,8 @@ export const bannerTransitionTimeout = { enter: 500, exit: 400 }
  */
 const ReadyDelay = 100
 export class App extends React.Component<IAppProps, IAppState> {
+  private addingFolderGroup = false
+
   private folderGroups = normalizeFolderGroups(
     getStringArray('repository-folder-groups')
   )
@@ -859,12 +862,36 @@ export class App extends React.Component<IAppProps, IAppState> {
   }
 
   private onAddFolderGroup = async () => {
-    const folder = await showOpenDialog({
-      title: 'Choose a folder to group repositories',
-      properties: ['openDirectory'],
-    })
-    if (folder !== null) {
+    if (this.addingFolderGroup) {
+      return
+    }
+    this.addingFolderGroup = true
+    try {
+      const folder = await showOpenDialog({
+        title: 'Choose a folder to add and group repositories',
+        properties: ['openDirectory'],
+      })
+      if (folder === null) {
+        return
+      }
       this.onFolderGroupsChanged([...this.folderGroups, folder])
+      const errors = await addFolderRepositories(
+        folder,
+        this.state.repositories.map(repository => repository.path),
+        paths => this.props.dispatcher.addRepositories(paths)
+      )
+      if (errors.length > 0) {
+        await this.props.dispatcher.postError(
+          new Error(
+            'Some repositories could not be added from this folder:\n\n' +
+              errors.join('\n')
+          )
+        )
+      }
+    } catch (error) {
+      await this.props.dispatcher.postError(error)
+    } finally {
+      this.addingFolderGroup = false
     }
   }
 
