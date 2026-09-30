@@ -1,4 +1,4 @@
-import { describe, it, TestContext } from 'node:test'
+import { beforeEach, describe, it, TestContext } from 'node:test'
 import assert from 'node:assert'
 import { writeFile } from 'fs/promises'
 import * as Path from 'path'
@@ -24,6 +24,7 @@ import { BranchType } from '../../src/models/branch'
 import { TestStatsStore } from '../helpers/test-stats-store'
 import { groupBranches } from '../../src/ui/branches/group-branches'
 import { git } from '../../src/lib/git/core'
+import { isolateGitConfig } from '../helpers/git-config'
 
 describe('GitStore', () => {
   it('refreshes the branch picker after new branches are created on multiple remotes', async t => {
@@ -295,6 +296,8 @@ describe('GitStore', () => {
   })
 
   describe('loadBranches', () => {
+    beforeEach(isolateGitConfig)
+
     const setupRepositories = async (t: TestContext) => {
       const upstream = await setupEmptyRepository(t)
       await makeCommit(upstream, {

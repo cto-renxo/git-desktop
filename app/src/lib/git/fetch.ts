@@ -105,10 +105,15 @@ export async function fetchRefspec(
   remote: IRemote,
   refspec: string
 ): Promise<void> {
-  await git(['fetch', remote.name, refspec], repository.path, 'fetchRefspec', {
-    successExitCodes: new Set([0, 128]),
-    env: await envForRemoteOperation(remote.url),
-  })
+  await git(
+    ['fetch', '--', remote.name, refspec],
+    repository.path,
+    'fetchRefspec',
+    {
+      successExitCodes: new Set([0, 128]),
+      env: await envForRemoteOperation(remote.url),
+    }
+  )
 }
 
 export async function fastForwardBranches(
