@@ -90,8 +90,9 @@ class UpdateInfo extends React.Component<IUpdateInfoProps> {
 export class About extends React.Component<IAboutProps> {
   private get canCheckForUpdates() {
     return (
-      __RELEASE_CHANNEL__ !== 'development' ||
-      this.props.allowDevelopment === true
+      __UPDATES_URL__.length > 0 &&
+      (__RELEASE_CHANNEL__ !== 'development' ||
+        this.props.allowDevelopment === true)
     )
   }
 
@@ -149,8 +150,9 @@ export class About extends React.Component<IAboutProps> {
     if (!this.canCheckForUpdates) {
       return (
         <p>
-          The application is currently running in development and will not
-          receive any updates.
+          {__UPDATES_URL__.length === 0
+            ? 'Automatic updates are not configured for this build. Install a newer GitHub Desktop release manually.'
+            : 'The application is currently running in development and will not receive any updates.'}
         </p>
       )
     }

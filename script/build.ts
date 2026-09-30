@@ -2,7 +2,6 @@
 /// <reference path="./globals.d.ts" />
 
 import * as cp from 'child_process'
-import packager, { OfficialArch, Options } from '@electron/packager'
 import frontMatter from 'front-matter'
 import * as os from 'os'
 import * as path from 'path'
@@ -22,6 +21,19 @@ export interface ILicense {
   readonly featured: boolean
   readonly body: string
   readonly hidden: boolean
+}
+
+type DesktopPackageArch = 'arm64' | 'x64'
+type DesktopPackagePlatform = 'darwin' | 'linux' | 'win32'
+
+interface IDesktopPackagerModule {
+  readonly packager: (options: object) => Promise<ReadonlyArray<string>>
+}
+
+interface IOSXNotarizeOptions {
+  readonly appleId: string
+  readonly appleIdPassword: string
+  readonly teamId: string
 }
 
 import {
@@ -68,8 +80,10 @@ const outRoot = path.join(projectRoot, 'out')
 
 console.log(`Building for ${getChannel()}…`)
 
-console.log('Removing old distribution…')
-rmSync(getDistRoot(), { recursive: true, force: true })
+if (!shouldSkipPackaging) {
+  console.log('Removing old distribution…')
+  rmSync(getDistRoot(), { recursive: true, force: true })
+}
 
 console.log('Copying dependencies…')
 copyDependencies()
@@ -130,10 +144,15 @@ verifyInjectedSassVariables(outRoot)
     console.log(`Built to ${appPaths}`)
   })
 
-function packageApp() {
+async function packageApp() {
+  const packagerModuleName = '@electron/packager'
+  const { packager }: IDesktopPackagerModule = await import(packagerModuleName)
+
   // not sure if this is needed anywhere, so I'm just going to inline it here
   // for now and see what the future brings...
-  const toPackagePlatform = (platform: NodeJS.Platform) => {
+  const toPackagePlatform = (
+    platform: NodeJS.Platform
+  ): DesktopPackagePlatform => {
     if (platform === 'win32' || platform === 'darwin' || platform === 'linux') {
       return platform
     }
@@ -142,7 +161,9 @@ function packageApp() {
     )
   }
 
-  const toPackageArch = (targetArch: string | undefined): OfficialArch => {
+  const toPackageArch = (
+    targetArch: string | undefined
+  ): DesktopPackageArch => {
     if (targetArch === undefined) {
       targetArch = os.arch()
     }
@@ -194,7 +215,7 @@ function packageApp() {
     dir: outRoot,
     overwrite: true,
     tmpdir: false,
-    derefSymlinks: false,
+    derefSymlinks: true,
     prune: false, // We'll prune them ourselves below.
     ignore: [
       new RegExp('/node_modules/electron($|/)'),
@@ -239,8 +260,8 @@ function packageApp() {
     // Windows
     win32metadata: {
       CompanyName: getCompanyName(),
-      FileDescription: '',
-      OriginalFilename: '',
+      FileDescription: getProductName(),
+      OriginalFilename: `${getExecutableName()}.exe`,
       ProductName: getProductName(),
       InternalName: getProductName(),
     },
@@ -493,7 +514,7 @@ ${licenseText}`
   rmSync(chooseALicense, { recursive: true, force: true })
 }
 
-function getNotarizationOptions(): Options['osxNotarize'] {
+function getNotarizationOptions(): IOSXNotarizeOptions | undefined {
   const {
     APPLE_ID: appleId,
     APPLE_ID_PASSWORD: appleIdPassword,

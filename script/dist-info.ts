@@ -136,18 +136,23 @@ export function getDistArchitecture(): 'arm64' | 'x64' {
 }
 
 export function getUpdatesURL() {
-  // It is also possible to use a `x64/` path, but for now we'll leave the
-  // original URL without architecture in it (which will still work for
-  // compatibility reasons) in case anything goes wrong until we have everything
-  // sorted out.
-  const architecturePath = getDistArchitecture() === 'arm64' ? 'arm64/' : ''
-  return `https://central.github.com/api/deployments/desktop/desktop/${architecturePath}latest?version=${version}&env=${getChannel()}`
+  // A fork must never download upstream binaries over its own installation.
+  const value = process.env.DESKTOP_UPDATES_URL ?? ''
+  if (value.length > 0) {
+    const url = new URL(value)
+    if (url.protocol !== 'https:' || url.hostname === 'central.github.com') {
+      throw new Error('Configure an HTTPS update feed owned by this fork')
+    }
+  }
+  return value
 }
 
 export function shouldMakeDelta() {
   // Only production and beta channels include deltas. Test releases aren't
   // necessarily sequential so deltas wouldn't make sense.
-  return ['production', 'beta'].includes(getChannel())
+  return (
+    getUpdatesURL().length > 0 && ['production', 'beta'].includes(getChannel())
+  )
 }
 
 /**

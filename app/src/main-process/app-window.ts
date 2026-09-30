@@ -52,6 +52,7 @@ export class AppWindow {
     })
 
     const windowOptions: Electron.BrowserWindowConstructorOptions = {
+      title: __APP_NAME__,
       x: savedWindowState.x,
       y: savedWindowState.y,
       width: savedWindowState.width,

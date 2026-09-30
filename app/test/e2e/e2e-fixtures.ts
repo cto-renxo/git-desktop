@@ -97,16 +97,35 @@ function getE2ELaunchOptions() {
 }
 
 export function terminateWindowsUpdaterProcesses() {
-  if (process.platform !== 'win32') {
+  if (process.platform !== 'win32' || e2eAppMode === 'unpackaged') {
     return
   }
 
-  for (const imageName of ['Update.exe', 'GitHubDesktop.exe']) {
-    spawnSync('taskkill', ['/F', '/T', '/IM', imageName], {
+  if (
+    !/^GitHubDesktop(?:-dev)?\.exe$/i.test(path.basename(e2eAppExecutablePath))
+  ) {
+    throw new Error('Updater cleanup requires a GitHub Desktop executable')
+  }
+  const executableDirectory = path.dirname(path.resolve(e2eAppExecutablePath))
+  const cleanupRoot = /^app-/.test(path.basename(executableDirectory))
+    ? path.dirname(executableDirectory)
+    : executableDirectory
+  // Scope cleanup to this test installation. Other Squirrel apps and the
+  // original GitHub Desktop must remain available during side-by-side tests.
+  spawnSync(
+    'powershell.exe',
+    [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      "$root = [IO.Path]::GetFullPath($env:DESKTOP_CUSTOM_E2E_CLEANUP_ROOT).TrimEnd('\\') + '\\'; Get-CimInstance Win32_Process | Where-Object { $_.Name -in @('Update.exe', 'GitHubDesktop.exe', 'GitHubDesktop-dev.exe') -and $_.ExecutablePath -and $_.ExecutablePath.StartsWith($root, [StringComparison]::OrdinalIgnoreCase) } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }",
+    ],
+    {
       stdio: 'ignore',
       windowsHide: true,
-    })
-  }
+      env: { ...process.env, DESKTOP_CUSTOM_E2E_CLEANUP_ROOT: cleanupRoot },
+    }
+  )
 }
 
 // ── Helpers exposed to tests ────────────────────────────────────────

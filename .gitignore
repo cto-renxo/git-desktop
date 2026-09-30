@@ -20,3 +20,7 @@ junit*.xml
 *.swp
 tslint-rules/
 playwright-videos/
+
+# Local packaging output and task worktrees
+dist-build/
+.worktrees/

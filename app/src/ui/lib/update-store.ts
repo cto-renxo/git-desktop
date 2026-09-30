@@ -224,6 +224,9 @@ class UpdateStore {
   }
 
   private async getUpdatesUrl(skipGuidCheck: boolean) {
+    if (__UPDATES_URL__.length === 0) {
+      return null
+    }
     let url = null
 
     try {
@@ -272,7 +275,11 @@ class UpdateStore {
 
   private async updatePriorityUpdateStatus() {
     try {
-      const response = await fetch(await this.getUpdatesUrl(false), {
+      const updatesUrl = await this.getUpdatesUrl(false)
+      if (updatesUrl === null) {
+        return
+      }
+      const response = await fetch(updatesUrl, {
         method: 'HEAD',
         headers: { 'user-agent': getUserAgent() },
       })
