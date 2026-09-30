@@ -1,5 +1,15 @@
 # Local GitHub Desktop build
 
+For development, run `yarn start` from the checkout root. It compiles development
+bundles, prepares resources without packaging, and launches the installed Electron
+runtime against `out`. No `yarn build:dev` prerequisite is required. Leave the
+terminal running: renderer edits use hot reload. Restart `yarn start` after changes
+to the main process or other bundles. Development compilation uses a filesystem
+cache, so the first start is heavier than subsequent starts. Production and
+development share `out`; stop development before building production, then restart
+development afterward. Development uses the separate GitHub Desktop development
+profile.
+
 This checkout uses the standard GitHub Desktop name, executable, application
 profile, credential namespaces, and browser authentication protocols. The local
 build includes the repository folder groups, history tag layout, branch discovery,

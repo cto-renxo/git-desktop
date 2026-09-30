@@ -93,4 +93,11 @@ export default [
   crashConfig,
   cliConfig,
   highlighterConfig,
-]
+].map((configuration, index) => ({
+  ...configuration,
+  cache: {
+    type: 'filesystem' as const,
+    name: `development-${index}`,
+    buildDependencies: { config: [__filename] },
+  },
+}))

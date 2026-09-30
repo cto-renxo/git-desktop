@@ -25,6 +25,13 @@ if (process.platform === 'darwin') {
 }
 
 export function run(spawnOptions: SpawnOptions) {
+  if (process.env.NODE_ENV === 'development') {
+    const root = join(__dirname, '..')
+    const electron = require('electron') as string
+    const env = { ...process.env, ...spawnOptions.env }
+    delete env.ELECTRON_RUN_AS_NODE
+    return spawn(electron, [join(root, 'out')], { ...spawnOptions, env })
+  }
   try {
     // eslint-disable-next-line no-sync
     const stats = Fs.statSync(binaryPath)

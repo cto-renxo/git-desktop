@@ -790,17 +790,13 @@ function createWindow() {
       REACT_DEVELOPER_TOOLS,
     } = require('electron-devtools-installer')
 
-    const axeDevTools = {
-      id: 'lhdoppojpmngadmnindnejefpokejbdd',
-    }
-
-    const extensions = [REACT_DEVELOPER_TOOLS, axeDevTools]
+    const extensions = [REACT_DEVELOPER_TOOLS]
 
     try {
       installExtension(extensions, {
         loadExtensionOptions: { allowFileAccess: true },
       })
-      console.log('Added Extensions: "React Developer Tools", "axe DevTools"')
+      console.log('Added Extensions: "React Developer Tools"')
     } catch (e) {
       console.log('An error occurred while loading extensions: ', e)
     }

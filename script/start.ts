@@ -8,6 +8,8 @@ import configs from '../app/webpack.development'
 
 import { run } from './run'
 import { createServer } from 'http'
+import { spawnSync } from 'child_process'
+import { join } from 'path'
 
 function getPortOrDefault() {
   const port = process.env.PORT
@@ -23,6 +25,7 @@ function getPortOrDefault() {
 }
 
 function startApp() {
+  console.log('Starting Electron…')
   const runningApp = run({ stdio: 'inherit' })
   if (runningApp == null) {
     console.error(
@@ -31,9 +34,29 @@ function startApp() {
     process.exit(1)
   }
 
-  runningApp.on('close', () => {
-    process.exit(0)
+  runningApp.on('error', error => {
+    console.error('Could not start Electron:', error)
+    process.exit(1)
   })
+  console.log(`Electron started (PID ${runningApp.pid}).`)
+  runningApp.on('close', code => {
+    console.log(`Electron exited (code ${code}).`)
+    process.exit(code ?? 1)
+  })
+}
+
+function reportCompilation(
+  compiler: webpack.Compiler | webpack.MultiCompiler,
+  label: string
+) {
+  let lastStep = ''
+  new webpack.ProgressPlugin((fraction, message) => {
+    const step = `${Math.floor(fraction * 10) * 10}% ${message}`
+    if (step !== lastStep) {
+      console.log(`${label}: ${step}`)
+      lastStep = step
+    }
+  }).apply(compiler)
 }
 
 if (process.env.NODE_ENV === 'production') {
@@ -41,10 +64,19 @@ if (process.env.NODE_ENV === 'production') {
 } else {
   const rendererConfig = configs[1]
   const compiler = webpack(rendererConfig)
+  reportCompilation(compiler, 'Renderer')
+  compiler.hooks.done.tap('ReportDevelopmentErrors', stats => {
+    if (stats.hasErrors()) {
+      console.error(stats.toString({ all: false, errors: true }))
+      process.exit(1)
+    }
+  })
   const port = getPortOrDefault()
   const message = 'Could not find public path from configuration'
 
   const devMiddleware = DevMiddleware(compiler, {
+    // Electron loads the HTML from disk; its scripts are served by middleware.
+    writeToDisk: filePath => filePath.endsWith('index.html'),
     publicPath: u(
       message,
       u(message, u(message, rendererConfig).output).publicPath
@@ -65,7 +97,43 @@ if (process.env.NODE_ENV === 'production') {
   server.listen(port, 'localhost')
   server.on('listening', () => {
     console.log(`Server running at http://localhost:${port}`)
-    startApp()
+    // The renderer is served by middleware; compile the other processes to disk.
+    const diskCompiler = webpack(configs.filter((_, index) => index !== 1))
+    reportCompilation(diskCompiler, 'Application bundles')
+    diskCompiler.run((error, stats) => {
+      diskCompiler.close(closeError => {
+        if (error || closeError || !stats || stats.hasErrors()) {
+          console.error(
+            error || closeError || stats?.toString({ all: false, errors: true })
+          )
+          process.exit(1)
+        }
+        console.log('Preparing development resources (without packaging)…')
+        const root = join(__dirname, '..')
+        const prepared = spawnSync(
+          process.execPath,
+          [
+            join(root, 'vendor', 'yarn-1.21.1.js'),
+            'ts-node',
+            '-P',
+            'script/tsconfig.json',
+            'script/build.ts',
+          ],
+          {
+            cwd: root,
+            stdio: 'inherit',
+            env: { ...process.env, DESKTOP_SKIP_PACKAGE: '1' },
+          }
+        )
+        if (prepared.error || prepared.status !== 0) {
+          console.error(
+            prepared.error || 'Development resource preparation failed.'
+          )
+          process.exit(1)
+        }
+        devMiddleware.waitUntilValid(() => startApp())
+      })
+    })
   })
   server.on('error', (err: Error) => {
     console.error(err)
