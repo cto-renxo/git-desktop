@@ -15,9 +15,33 @@ Commits `c933d57` through `3b336d3` on `desktop-improvements`. Source changes on
 | `48cd951` | Add configurable collapsible repository folder groups |
 | `c933d57` | Show compact scrollable tag lists in history rows |
 
-## Verification and attribution (2026-09-30)
+## Status at a glance
 
-This section supersedes the provisional conclusions and fix suggestions below wherever they disagree. Verification used committed source at `3b336d39ff`, compared with upstream baseline `f2686bcec9`, plus Git history and blame. The configured user identity and authors of the introducing commits are `CTO <cto@renxo.tech>`. The worktree contained concurrent uncommitted changes and advanced to `fd7b03f2e7` during inspection; these verdicts concern the original reviewed endpoint, not a verification of subsequent changes.
+| # | Finding | Verdict | Status |
+| --- | --- | --- | --- |
+| B1 | Dev server exits on rebuild errors | Confirmed | Fixed `cb4f55e`; live hot-reload check pending |
+| B2 | Folder import accepts submodules | Confirmed | Fixed for import `cbb9956`; Health dialog still lists submodules |
+| B3 | Unbounded folder scan | Confirmed (not measured) | Skip list extended `cbb9956`; depth unchanged by design |
+| B4 | VS Code action always offered | Confirmed | Open |
+| — | Health fetch lacks an account | Rejected | No change; do not add an account argument |
+| — | Repository menu child gating | Rejected | No change |
+| C1 | Foreground fetch broadens refspecs | Intentional | Confirm policy |
+| C2 | Health run locks all repositories | Confirmed | Open |
+| C3 | WSL detection always on | Confirmed | Confirm policy |
+| C4 | axe DevTools removed | Confirmed | Confirm policy |
+| C5 | Updates/deltas off without feed | Confirmed | Document delta consequence |
+| M1 | Sequential unmerged-branch counts | Confirmed (not timed) | Open |
+| M2 | Stale collapsed folder-group state | Confirmed | Open (storage and component) |
+| M3 | `Error:` prefixes | Partly confirmed (2 sites) | Open |
+| M4 | Shared reset statistic | Behaviour | Only if stats are reported |
+| M5 | Windows x64 local packager | Limitation | None |
+| M6 | Gitignore submodule publication | Unresolved | Verify before sharing |
+| N1 | Health dialog lists submodules | Confirmed; identified during first-batch review, pre-existing since `6ced712` | Open |
+| N2 | Skip list hides repos under `build`/`bin`/`temp`/`library`/`vendor` | Confirmed tradeoff introduced by `cbb9956` | Document or accept |
+
+## Verified findings (2026-09-30)
+
+These verdicts are authoritative; the fix details further down are synced with them. Verification used committed source at `3b336d39ff`, compared with upstream baseline `f2686bcec9`, plus Git history and blame. The configured user identity and authors of the introducing commits are `CTO <cto@renxo.tech>`. The worktree contained concurrent uncommitted changes and advanced to `fd7b03f2e7` during inspection; these verdicts concern the original reviewed endpoint, not a verification of subsequent changes.
 
 No files were changed during verification. No build, application launch, benchmark, private-remote authentication test, or live upstream submodule-availability check was performed. Source and history support four of the five reported bugs. The missing-account claim is incorrect for this version. No confirmed pre-existing upstream bug was identified among these findings.
 
@@ -25,11 +49,11 @@ No files were changed during verification. No build, application launch, benchma
 
 | Finding | Verified verdict | Origin |
 | --- | --- | --- |
-| 1. Development server exits on rebuild errors | Confirmed: the renderer compiler's `done` hook calls `process.exit(1)` on every compilation error, including watch rebuilds. This terminates the server process; Electron termination was not verified. | Introduced by user commit `62d8d8c`; hook absent upstream. Evidence: `script/start.ts`, `ReportDevelopmentErrors`. |
-| 2. Folder import accepts submodules | Confirmed: discovery finds nested `.git` entries, and equality of Git directory and common directory excludes linked worktrees but does not exclude submodules. | Import introduced by user commit `76879b3`, using discovery from `6ced712`. Evidence: `addFolderRepositories` in `app/src/ui/repositories-list/add-folder-repositories.ts`. |
-| 3. Unbounded folder scan | Confirmed performance risk: no depth limit, nine excluded names, and traversal continues inside repositories. Actual delay was not measured. Nested discovery is explicitly intentional; stopping at the first repository or imposing depth four changes behavior and needs a design decision. | Introduced by user commit `6ced712`. Evidence: `discoverHealthRepositories` in `app/src/lib/repository-health.ts`. |
-| 4. Health fetch lacks an account | Rejected: `fetch` and `envForRemoteOperation` have no account parameter in this version or the upstream baseline. Normal GitStore fetch uses the same API. Git execution installs Desktop's credential helper, which obtains stored account tokens. The proposed third account argument would occupy the progress-callback parameter and is not a valid fix. Stale account-related comments are inherited. | No demonstrated authentication regression. Evidence: `app/src/lib/git/fetch.ts`, `environment.ts`, `core.ts`, and `app/src/lib/trampoline/trampoline-environment.ts` / `trampoline-credential-helper.ts`. |
-| 5. VS Code action always offered | Confirmed menu-availability defect: item is unconditional and enabled when the directory exists; installed-editor resolution and fallback/error handling occur after clicking. | Introduced by user commit `6ced712`. Evidence: `getFolderActions` in `app/src/ui/lib/folder-actions.ts`. |
+| B1. Development server exits on rebuild errors | Confirmed: the renderer compiler's `done` hook calls `process.exit(1)` on every compilation error, including watch rebuilds. This terminates the server process; Electron termination was not verified. | Introduced by user commit `62d8d8c`; hook absent upstream. Evidence: `script/start.ts`, `ReportDevelopmentErrors`. |
+| B2. Folder import accepts submodules | Confirmed: discovery finds nested `.git` entries, and equality of Git directory and common directory excludes linked worktrees but does not exclude submodules. | Import introduced by user commit `76879b3`, using discovery from `6ced712`. Evidence: `addFolderRepositories` in `app/src/ui/repositories-list/add-folder-repositories.ts`. |
+| B3. Unbounded folder scan | Confirmed performance risk: no depth limit, nine excluded names, and traversal continues inside repositories. Actual delay was not measured. Nested discovery is explicitly intentional; stopping at the first repository or imposing depth four changes behavior and needs a design decision. | Introduced by user commit `6ced712`. Evidence: `discoverHealthRepositories` in `app/src/lib/repository-health.ts`. |
+| Rejected: Health fetch lacks an account | Rejected: `fetch` and `envForRemoteOperation` have no account parameter in this version or the upstream baseline. Normal GitStore fetch uses the same API. Git execution installs Desktop's credential helper, which obtains stored account tokens. The proposed third account argument would occupy the progress-callback parameter and is not a valid fix. Stale account-related comments are inherited. | No demonstrated authentication regression. Evidence: `app/src/lib/git/fetch.ts`, `environment.ts`, `core.ts`, and `app/src/lib/trampoline/trampoline-environment.ts` / `trampoline-credential-helper.ts`. |
+| B4. VS Code action always offered | Confirmed menu-availability defect: item is unconditional and enabled when the directory exists; installed-editor resolution and fallback/error handling occur after clicking. | Introduced by user commit `6ced712`. Evidence: `getFolderActions` in `app/src/ui/lib/folder-actions.ts`. |
 
 ### Behavior changes
 
@@ -37,7 +61,7 @@ No files were changed during verification. No build, application launch, benchma
 | --- | --- | --- |
 | Foreground Fetch broadens refspecs and fetches all configured remotes | Confirmed, explicitly intentional branch discovery. Background fetch preserves configured behavior. Applying the wide refspec only when configuration is narrower still broadens single-branch clones, so that suggestion does not preserve their original restriction. | User commit `6ced712`; `app/src/lib/git/fetch.ts`, `app/src/lib/stores/git-store.ts`. |
 | Health operations lock all registered repositories | Confirmed: busy flags cover all registered repositories for the whole run. An unrelated busy repository can also prevent starting the operation. | User commit `6ced712`; `AppStore._performRepositoryHealthOperation`. |
-| WSL detection always enabled | Confirmed policy change from `enableBetaFeatures()` to `true`; no demonstrated launch failure. | User commit `6ced712`; `app/src/lib/feature-flag.ts`. |
+| WSL detection always enabled | Confirmed policy change from `enableBetaFeatures()` to `true`; launch behavior not tested. | User commit `6ced712`; `app/src/lib/feature-flag.ts`. |
 | Repository menu available without selection | Confirmed change, but child gating is already correct. Shell, folder and settings actions are scoped; push, pull, fetch and GitHub actions have separate disable logic. All need not be in `repositoryScopedIDs`. No missing-gating defect found. | Parent change in user commit `6ced712`; relevant child gating already existed upstream. Evidence: `app/src/lib/menu-update.ts`. |
 | axe DevTools removed | Confirmed removal of automatic development-extension installation, not application functionality. | User commit `62d8d8c`; `app/src/main-process/main.ts`. |
 | Updates and delta packages disabled without custom feed | Confirmed. Production/beta delta generation remains possible when a feed is configured. Update policy is documented; the delta consequence is not explicit in the reviewed documentation. | User commit `ee614fc`; `script/dist-info.ts`, `app/src/ui/lib/update-store.ts`, `docs/technical/desktop-local-build.md`. |
@@ -53,28 +77,52 @@ No files were changed during verification. No build, application launch, benchma
 | Windows x64 local packager | Confirmed platform limitation, not a bug. The `finally` cleanup is appropriate for failures. | User commit `ee614fc`; `script/package-local.mjs`. |
 | Gitignore submodule publication | Unresolved sharing risk: `ebcf0afa6a` exists locally and is the committed parent pointer. No inspected remote-tracking branch contains it. The worktree submodule's origin points to the other local checkout; that checkout's upstream submodule clone lacks the object. This does not prove current absence on GitHub. Verify upstream availability before sharing; do not treat an empty cached branch-containment result as definitive proof or automatically push to the upstream project. | Parent pointer introduced by user commit `1a4c896`; submodule commit also authored by `CTO <cto@renxo.tech>`. |
 
-### Revised action order
-
-- [ ] Fix renderer watch-error termination.
-- [ ] Exclude submodules from folder import and expand discovery exclusions; decide depth and nested-repository behavior before changing traversal semantics.
-- [ ] Gate explicit VS Code actions by installed-editor availability.
-- [ ] Review the scope of health-operation locking.
-- [ ] Confirm intended foreground-fetch, WSL, development-extension and update policies; document the delta consequence.
-- [ ] Clean up confirmed error-prefix occurrences and stale collapsed state, including component state.
-- [ ] Verify the submodule commit is obtainable from the intended published source before sharing.
-- [ ] Consider bounded concurrency for unmerged-branch counts and separate reset telemetry if required.
-
 Do not implement the proposed account argument or change repository-menu child gating based on this review: those findings are not supported by the inspected version.
 
-## Original provisional review
+## Fix progress (2026-09-30)
 
-The following records the initial review. Read it with the verified verdicts above; its authentication claim, blanket menu-gating concern, and some minor-item details are superseded.
+Work is isolated on `codex/desktop-review-fixes` in `.worktrees/desktop-review-fixes`, based on documentation commit `2e5c746142`.
 
-## Bugs
+First batch implemented:
 
-### 1. Dev server exits on any renderer compile error
+- Renderer watch compilation errors are logged without terminating the development server after the initial compilation. Initial compilation errors still fail startup.
+- Folder import excludes submodules using `git rev-parse --show-superproject-working-tree`, preserving independent nested repositories and separate Git-directory checkouts.
+- Discovery excludes common generated/dependency directories, including Unity, Flutter, build outputs, virtual environments and plugin-link trees. Nested discovery remains supported; no arbitrary depth cutoff was added.
 
-`script/start.ts` (`62d8d8c`). The `done` hook calls `process.exit(1)` whenever `stats.hasErrors()`. It fires on every watch rebuild, so a typo saved mid-edit kills the dev server, the middleware and Electron.
+Validation: all 16 focused repository-health and folder-import tests passed, including new regression cases for submodules and case-insensitive generated-directory exclusions. Prettier and `git diff --check` passed. A local application-dependency junction was needed for the new worktree to resolve `dugite`. Development-server behavior still needs live launch/hot-reload verification.
+
+### Review of the first batch
+
+Checked against the `cb4f55e` and `cbb9956` diffs; the fixes are correct. Two gaps:
+
+- The Repository Health dialog uses the same discovery, so submodules are still listed there as separate repositories; only folder import skips them. This behavior predates `cbb9956` and originates in `6ced712`; it was newly identified during review of the first batch. Apply the `--show-superproject-working-tree` check in discovery or the dialog if they should be hidden there too.
+- The new exclusions skip any directory named `build`, `bin`, `temp`, `library`, `vendor` and so on at every level, so an independent repository stored under such a folder is no longer discovered. Acceptable for generated trees; worth one line in the dialog or docs.
+
+## Remaining work
+
+- [x] B1 dev server exit
+- [x] B2 submodule exclusion in folder import
+- [x] B3 discovery skip list
+- [ ] Live launch and hot-reload check of B1
+- [ ] N1: hide submodules in the Repository Health dialog too, if wanted
+- [ ] B4: gate the VS Code action on installed editors
+- [ ] C2: lock only the repositories in a health run
+- [ ] M2, M3: stale collapsed state (storage and component) and the two `String(error)` sites
+- [ ] C1, C3, C4, C5: confirm fetch, WSL, dev-extension and update policies; document the delta consequence
+- [ ] M6: verify the gitignore submodule commit is fetchable before sharing the branch
+- [ ] M1, M4: bounded concurrency for unmerged-branch counts; separate reset stat if needed
+
+Looked correct, no change needed: health fetch authentication (`envForRemoteOperation` supplies the credential trampoline, same as `GitStore.fetchRemotes`), Repository menu child gating with no repository selected (`push`/`pull`/`fetch` and the rest are disabled in `getRepositoryMenuBuilder`), the hard-reset confirmation flow, the linked-worktree exclusion in folder import, the fast-forward-only guards in `safelyUpdateHealthWorktree`, folder-group path matching on Windows, and the local packaging script's staging and rename.
+
+## Fix details
+
+Suggested implementations for each finding. Bugs 1–3 are implemented on `codex/desktop-review-fixes` (see Fix progress); the snippets remain as reference.
+
+### Bugs
+
+#### 1. Dev server exits on any renderer compile error (fixed, `cb4f55e`)
+
+`script/start.ts` (`62d8d8c`). The `done` hook calls `process.exit(1)` whenever `stats.hasErrors()`. It fires on every watch rebuild, so a typo saved mid-edit kills the dev server process (Electron termination not verified).
 
 Fix: exit only on the first compile; afterwards log and keep watching.
 
@@ -91,11 +139,11 @@ compiler.hooks.done.tap('ReportDevelopmentErrors', stats => {
 })
 ```
 
-### 2. Folder-group import adds submodules as repositories
+#### 2. Folder-group import adds submodules as repositories (fixed for import, `cbb9956`)
 
 `app/src/ui/repositories-list/add-folder-repositories.ts` (`76879b3`). `discoverHealthRepositories` returns every directory containing a `.git` entry, including submodule checkouts whose `.git` is a file pointing into the parent's `.git/modules/`. For a submodule, `git rev-parse --git-common-dir` equals its own git dir, so the main-checkout test passes and the submodule is added as a standalone repository.
 
-Fix: skip paths whose git dir lives under another repository's `.git/modules`. `getRepositoryType` already resolves `gitDir`.
+Implemented instead with `git rev-parse --show-superproject-working-tree`, which avoids assuming a metadata layout. Original suggestion: skip paths whose git dir lives under another repository's `.git/modules`. `getRepositoryType` already resolves `gitDir`.
 
 ```typescript
 const gitDirectory = await realpath(type.gitDir)
@@ -104,13 +152,15 @@ if (/[\\/]\.git[\\/]modules[\\/]/.test(gitDirectory)) {
 }
 ```
 
-Also stop descending into a directory once it is identified as a repository unless nested repositories are wanted (see 3).
+Also expand the discovery exclusions (see 3). Whether to keep descending into repositories is a design decision: nested discovery was intentional.
 
-### 3. Folder scan has no depth limit and a short skip list
+#### 3. Folder scan has no depth limit and a short skip list (skip list fixed, `cbb9956`)
 
-`app/src/lib/repository-health.ts` (`6ced712`). The scan walks every subdirectory except nine names and continues inside each repository it finds. On a folder of Unity, Flutter, Node and Go projects this reads `Library/`, `Temp/`, `build/`, `dist/`, `target/`, `vendor/`, `Pods/`, `.next/` and similar, which can take minutes.
+`app/src/lib/repository-health.ts` (`6ced712`). The scan walks every subdirectory except nine names and continues inside each repository it finds. On a folder of Unity, Flutter, Node and Go projects this reads `Library/`, `Temp/`, `build/`, `dist/`, `target/`, `vendor/`, `Pods/`, `.next/` and similar, which may be slow (not measured).
 
-Fix: cap the depth, extend the skip list, and stop at the first `.git` found.
+Implemented: extend the skip list, accepting that discovery omits independent repositories beneath excluded folder names (N2). The depth cap and stopping at the first `.git` would also change intentional nested discovery; decide those before implementation.
+
+The following is an **unimplemented alternative**, not the committed fix: it includes a depth-four cutoff and stops at discovered repositories. The committed fix only expands exclusions and continues nested discovery.
 
 ```typescript
 const excludedDirectories = new Set([
@@ -119,6 +169,8 @@ const excludedDirectories = new Set([
   'library', 'temp', 'build', 'dist', 'target', 'vendor', 'pods',
   '.next', '.venv', 'venv', 'obj', 'bin', '.idea', '.vs',
 ])
+// Unimplemented alternative: this cutoff and the repository-level continue below
+// are not present in the committed fix; both change nested discovery.
 const MaxDepth = 4
 
 const pending: Array<{ path: string; depth: number }> = [
@@ -150,9 +202,9 @@ while (pending.length > 0 && !signal?.aborted) {
 }
 ```
 
-If nested repositories inside a repository are a requirement, keep descending but keep the depth cap and the extended skip list.
+If nested repositories inside a repository are a requirement, drop the `continue` after `paths.push(path)` and keep the extended skip list.
 
-### 4. "Open in Visual Studio Code" is always shown
+#### 4. "Open in Visual Studio Code" is always shown
 
 `app/src/ui/lib/folder-actions.ts` (`6ced712`). The menu item is unconditional. When VS Code is not installed, `openInSelectedExternalEditor` fails after the click.
 
@@ -177,21 +229,21 @@ const hasVSCode = config.availableEditors.includes('Visual Studio Code')
 
 The list comes from `getAvailableEditors()` in `lib/editors`; cache it once on startup.
 
-## Behaviour changes to confirm
+### Behaviour changes to confirm
 
 | Change | Where | Effect | If unintended |
 | --- | --- | --- | --- |
-| User fetch overrides configured refspecs | `lib/git/fetch.ts`, `stores/git-store.ts` (`6ced712`) | Every manual Fetch passes `--refmap=` and `+refs/heads/*:refs/remotes/<remote>/*`, fetches all configured remotes, and `--prune` prunes against the full branch set. Single-branch clones start pulling every branch. Fetch also reloads remotes and branches afterwards. | Add the wide refspec only when `remote.<name>.fetch` is narrower than `refs/heads/*`; read it with `git config --get-all remote.<name>.fetch`. |
-| Health run locks every repository | `app-store.ts` `_performRepositoryHealthOperation` | Sets `isPushPullFetchInProgress` on all registered repositories for the whole run; push/pull/fetch is disabled app-wide until it finishes or is aborted. | Lock only the repositories in the run; release each as its worker finishes. |
-| WSL detection always on | `feature-flag.ts` `enableWSLDetection` | Returns `true` regardless of the beta-features setting. | Return `enableBetaFeatures() \|\| __WIN32__` or keep the flag. |
-| axe DevTools extension removed | `main-process/main.ts` (`62d8d8c`) | Only React DevTools is installed in development. | Restore the `axeDevTools` entry. |
-| Auto-update off unless `DESKTOP_UPDATES_URL` is set | `script/dist-info.ts`, `update-store.ts`, `about.tsx` (`ee614fc`) | Correct for a fork. Side effect: `shouldMakeDelta()` returns `false`, so production and beta builds ship no delta packages. | Fine as is; note it in `docs/technical/desktop-local-build.md`. |
+| User fetch broadens refspecs and fetches all remotes | `lib/git/fetch.ts`, `stores/git-store.ts` (`6ced712`) | Intentional branch discovery. Every manual Fetch passes `--refmap=` and `+refs/heads/*:refs/remotes/<remote>/*`, fetches all configured remotes, and `--prune` prunes against the full set. Background fetch keeps configured behaviour. | Applying the wide refspec only when configuration is narrower still widens single-branch clones. To preserve them, skip it when `remote.<name>.fetch` is a single-branch mapping. |
+| Health run locks every repository | `app-store.ts` `_performRepositoryHealthOperation` | Sets `isPushPullFetchInProgress` on all registered repositories for the whole run; push/pull/fetch is disabled app-wide until it finishes or is aborted. An unrelated busy repository also blocks starting it. | Lock only the repositories in the run; release each as its worker finishes. |
+| WSL detection always on | `feature-flag.ts` `enableWSLDetection` | Returns `true` regardless of the beta-features setting. Launch behavior not tested. | Restore `enableBetaFeatures()`. |
+| axe DevTools extension removed | `main-process/main.ts` (`62d8d8c`) | Dev-time extension only; no app functionality affected. | Restore the `axeDevTools` entry. |
+| Auto-update off unless `DESKTOP_UPDATES_URL` is set | `script/dist-info.ts`, `update-store.ts`, `about.tsx` (`ee614fc`) | Correct for a fork. Side effect: without a feed, `shouldMakeDelta()` returns `false`; deltas still build when a feed is configured. | Document the delta consequence in `docs/technical/desktop-local-build.md`. |
 
-## Minor issues
+### Minor issues
 
-### Unmerged-branches dialog is slow on large repos
+#### Unmerged-branches dialog is slow on large repos
 
-`app/src/lib/git/unmerged-branches.ts`. One `rev-list --count` per branch, sequentially. 300 remote branches means 300 git processes before the list renders.
+`app/src/lib/git/unmerged-branches.ts`. One awaited `rev-list --count` per returned unmerged branch, sequentially. Not timed.
 
 ```typescript
 const refs = parseBranchRefs(result.stdout)
@@ -205,9 +257,9 @@ const counts = await Promise.all(
 
 Wrap in a limiter (`p-limit` ^2.2.0 is already a direct dependency in `app/package.json`) if process count matters.
 
-### Removed folder groups leave stale collapsed state
+#### Removed folder groups leave stale collapsed state
 
-`repositories-list.tsx`. `collapsed-repository-folder-groups` keeps the key of a group after it is removed. Fix in `App.onFolderGroupsChanged`:
+`repositories-list.tsx`. Removing a group prunes neither the persisted `collapsed-repository-folder-groups` keys nor `RepositoriesList`'s in-memory `collapsedFolderGroups` set, so re-adding a group restores its old collapsed state. Clear both: storage in `App.onFolderGroupsChanged` as below, and the component set when `folderGroups` changes.
 
 ```typescript
 const keys = new Set(this.folderGroups.map(f => `1:folder:${folderGroupKey(f)}`))
@@ -217,44 +269,34 @@ setStringArray(
 )
 ```
 
-### Error strings carry an `Error:` prefix
+#### Error strings carry an `Error:` prefix
 
 `unmerged-branches-dialog.tsx` (line 59) and `app-store.ts` `_performRepositoryHealthOperation` (`errors: [String(error)]`). `String(error)` on an `Error` yields `Error: message`. `repository-health.ts` already uses its `errorMessage` helper; export it and use it in these two places.
 
-### Hard reset and mixed reset share one stat counter
+#### Hard reset and mixed reset share one stat counter
 
-`dispatcher.ts`. Both increment `resetToCommitCount`. Add `hardResetToCommitCount` to the stats schema and increment it when `hard` is true.
+`dispatcher.ts`. Behaviour, not necessarily a defect: the existing total-reset counter now includes hard resets. Add a separate `hardResetToCommitCount` only if the stats are reported.
 
-### `package-local.mjs` is Windows x64 only
+#### `package-local.mjs` is Windows x64 only
 
 Stated in the script; fine for now. The `finally` `rm(staging)` after a successful rename is a no-op; leave it, it covers the failure path.
 
-### Submodule commit may not be pushed
+#### Submodule commit may not be pushed
 
-`app/static/common/gitignore` at `ebcf0afa6a`. If that commit exists only in the local submodule clone, a fresh `git submodule update` fails for anyone else. Check with `git -C app/static/common/gitignore branch -r --contains ebcf0afa6a`; if empty, push the submodule branch first.
+`app/static/common/gitignore` at `ebcf0afa6a`. No inspected remote-tracking branch contains it, and the worktree submodule's origin is the other local checkout. That does not prove it is missing on GitHub. Verify it is fetchable from the source the branch will be shared from; do not push to the upstream project automatically.
 
-## Suggested fix order
+## Review of the updated document (2026-10-01)
 
-- [ ] Dev server exit on rebuild errors (bug 1) — blocks daily work, 5-line fix
-- [ ] Submodule import + scan depth/skip list (bugs 2, 3) — same area, fix together
-- [ ] VS Code menu item gating (bug 4)
-- [ ] Confirm the five behaviour changes; adjust the fetch refspec if needed
-- [ ] `String(error)` → `errorMessage(error)`; stale collapsed keys; hard-reset stat
-- [ ] Verify the gitignore submodule commit is pushed before sharing the branch
-- [ ] Parallelise unmerged-branch counts when convenient
+Read the updated document and its working-tree diff on `codex/desktop-review-fixes`, and checked the new observations against `app/src/lib/repository-health.ts`, `app/src/ui/repositories-list/repository-health-dialog.tsx`, and `app/src/ui/repositories-list/add-folder-repositories.ts`. This was a source/documentation consistency check; no new runtime tests, benchmarks or remote publication checks were performed.
 
-Looked correct, no change needed: health fetch authentication (`envForRemoteOperation` supplies the credential trampoline, same as `GitStore.fetchRemotes`), Repository menu child gating with no repository selected (`push`/`pull`/`fetch` and the rest are disabled in `getRepositoryMenuBuilder`), the hard-reset confirmation flow, the linked-worktree exclusion in folder import, the fast-forward-only guards in `safelyUpdateHealthWorktree`, folder-group path matching on Windows, and the local packaging script's staging and rename.
+Both added observations are confirmed: the Health dialog has no superproject exclusion, and the shared discovery skip list filters matching directory names at every level. The existing authentication rejection and menu-gating verdict remain consistent with the previous verification.
 
-## Fix implementation progress (2026-09-30)
+Five documentation findings were recorded and corrected:
 
-Work is isolated on `codex/desktop-review-fixes` in `.worktrees/desktop-review-fixes`, based on documentation commit `2e5c746142`.
+1. N1 was newly identified, not introduced by the first fixes. Attribution now identifies `6ced712` as the origin of Health's existing submodule-listing behavior.
+2. Expanding the skip list has an explicit discovery tradeoff (N2); removed the claim that it is safe on its own.
+3. The verified bug table now uses B1 through B4 consistently with the status table and checklist; the rejected authentication claim is separate.
+4. The depth-four/stop-at-repository snippet is labeled as an unimplemented alternative, distinct from the committed nested-discovery behavior.
+5. WSL launch evidence now says behavior was not tested, rather than implying a launch check found no failures.
 
-First batch implemented:
-
-- Renderer watch compilation errors are logged without terminating the development server after the initial compilation. Initial compilation errors still fail startup.
-- Folder import excludes submodules using `git rev-parse --show-superproject-working-tree`, preserving independent nested repositories and separate Git-directory checkouts.
-- Discovery excludes common generated/dependency directories, including Unity, Flutter, build outputs, virtual environments and plugin-link trees. Nested discovery remains supported; no arbitrary depth cutoff was added.
-
-Validation: all 16 focused repository-health and folder-import tests passed, including new regression cases for submodules and case-insensitive generated-directory exclusions. Prettier and `git diff --check` passed. A local application-dependency junction was needed for the new worktree to resolve `dugite`. Development-server behavior still needs live launch/hot-reload verification.
-
-Remaining work includes installed-editor menu gating, health-operation lock scope, collapsed-state cleanup, error-message cleanup, and the policy/publication decisions identified above. No fixes to authentication or menu child gating are required by this review.
+No application source was changed by this document review. N1/N2 behavior decisions and the outstanding fixes remain open as listed above.

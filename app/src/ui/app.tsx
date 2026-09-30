@@ -1,3 +1,4 @@
+import { getAvailableEditors } from '../lib/editors'
 import * as React from 'react'
 import { addFolderRepositories } from './repositories-list/add-folder-repositories'
 import * as Path from 'path'
@@ -197,7 +198,10 @@ import { UnknownAuthors } from './unknown-authors/unknown-authors-dialog'
 import { UnsupportedOSBannerDismissedAtKey } from './banners/os-version-no-longer-supported-banner'
 import { offsetFromNow } from '../lib/offset-from'
 import { getNumber, getStringArray, setStringArray } from '../lib/local-storage'
-import { normalizeFolderGroups } from './repositories-list/folder-groups'
+import {
+  normalizeFolderGroups,
+  folderGroupKey,
+} from './repositories-list/folder-groups'
 import { showOpenDialog } from './main-process-proxy'
 import { IconPreviewDialog } from './octicons/icon-preview-dialog'
 import { isCertificateErrorSuppressedFor } from '../lib/suppress-certificate-error'
@@ -311,6 +315,8 @@ export class App extends React.Component<IAppProps, IAppState> {
   private getOnPopupDismissedFn = memoizeOne((popupId: number) => {
     return () => this.onPopupDismissed(popupId)
   })
+
+  private availableFolderEditors: ReadonlyArray<string> = []
 
   public constructor(props: IAppProps) {
     super(props)
@@ -858,6 +864,15 @@ export class App extends React.Component<IAppProps, IAppState> {
   private onFolderGroupsChanged = (folders: ReadonlyArray<string>) => {
     this.folderGroups = normalizeFolderGroups(folders)
     setStringArray('repository-folder-groups', this.folderGroups)
+    const validKeys = new Set(
+      this.folderGroups.map(folder => '1:folder:' + folderGroupKey(folder))
+    )
+    setStringArray(
+      'collapsed-repository-folder-groups',
+      getStringArray('collapsed-repository-folder-groups').filter(key =>
+        validKeys.has(key)
+      )
+    )
     this.forceUpdate()
   }
 
@@ -1124,6 +1139,12 @@ export class App extends React.Component<IAppProps, IAppState> {
   }
 
   public componentDidMount() {
+    getAvailableEditors()
+      .then(editors => {
+        this.availableFolderEditors = editors.map(editor => editor.editor)
+        this.forceUpdate()
+      })
+      .catch(error => log.error('Could not detect folder editors', error))
     document.ondragover = e => {
       if (e.dataTransfer != null) {
         if (this.isShowingModal) {
@@ -3515,6 +3536,7 @@ export class App extends React.Component<IAppProps, IAppState> {
     getFolderActions({
       path,
       missing,
+      availableEditors: this.availableFolderEditors,
       editorLabel: this.externalEditorLabel,
       shellLabel: this.state.useCustomShell
         ? 'Custom Shell'

@@ -1,3 +1,4 @@
+import { Repository } from '../../../src/models/repository'
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import * as React from 'react'
@@ -18,6 +19,55 @@ import { git } from '../../../src/lib/git/core'
 const onDismissed = () => {}
 
 describe('repository health dialogs', () => {
+  it('omits submodules from registered repository health results', async t => {
+    const electron = await import('electron')
+    const previousSend = electron.ipcRenderer.send
+    electron.ipcRenderer.send = () => {}
+    t.after(() => {
+      electron.ipcRenderer.send = previousSend
+    })
+    const parent = await setupEmptyRepository(t)
+    const source = await setupEmptyRepository(t)
+    await git(
+      ['commit', '--allow-empty', '-m', 'base'],
+      source.path,
+      'healthDialogTest'
+    )
+    await git(
+      [
+        '-c',
+        'protocol.file.allow=always',
+        'submodule',
+        'add',
+        source.path,
+        'module',
+      ],
+      parent.path,
+      'healthDialogTest'
+    )
+    const submodule = new Repository(
+      Path.join(parent.path, 'module'),
+      9999,
+      null,
+      false
+    )
+    const view = render(
+      <RepositoryHealthDialog
+        repositories={[parent, submodule]}
+        dispatcher={{} as Dispatcher}
+        onDismissed={onDismissed}
+      />
+    )
+    await waitFor(
+      () =>
+        assert.equal(
+          view.container.querySelectorAll('.health-repository').length,
+          1
+        ),
+      { timeout: 10000 }
+    )
+    view.unmount()
+  })
   it('fetches only selected visible repositories and retains operation errors', async t => {
     const electron = await import('electron')
     const previousSend = electron.ipcRenderer.send

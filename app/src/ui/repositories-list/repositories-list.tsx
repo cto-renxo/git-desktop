@@ -167,6 +167,21 @@ export class RepositoriesList extends React.Component<
     }
   }
 
+  public componentDidUpdate(prevProps: IRepositoriesListProps) {
+    if (prevProps.folderGroups !== this.props.folderGroups) {
+      const keys = new Set(
+        this.props.folderGroups.map(path =>
+          getGroupKey({ kind: 'folder', path })
+        )
+      )
+      const collapsedFolderGroups = new Set(
+        [...this.state.collapsedFolderGroups].filter(key => keys.has(key))
+      )
+      setStringArray(CollapsedFolderGroupsKey, [...collapsedFolderGroups])
+      this.setState({ collapsedFolderGroups })
+    }
+  }
+
   private renderItem = (item: IRepositoryListItem, matches: IMatches) => {
     const repository = item.repository
     return (

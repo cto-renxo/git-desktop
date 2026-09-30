@@ -75,7 +75,7 @@ const excludedDirectories = new Set([
   '.symlinks',
 ])
 
-const errorMessage = (error: unknown) =>
+export const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : String(error)
 
 async function run(path: string, args: string[]) {

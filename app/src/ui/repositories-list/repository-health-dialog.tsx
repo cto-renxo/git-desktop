@@ -1,8 +1,10 @@
+import { git } from '../../lib/git/core'
 import * as React from 'react'
 import * as Path from 'path'
 import { Repository } from '../../models/repository'
 import {
   discoverHealthRepositories,
+  errorMessage,
   getHealthRepositoryIdentity,
   inspectHealthRepository,
   needsHealthAttention,
@@ -90,6 +92,14 @@ export class RepositoryHealthDialog extends React.Component<IProps, IState> {
       }
       this.setState({ progress: `Checking ${path}` })
       try {
+        const superproject = await git(
+          ['rev-parse', '--show-superproject-working-tree'],
+          path,
+          'healthSubmoduleCheck'
+        )
+        if (superproject.stdout.trim().length > 0) {
+          continue
+        }
         const identity = await getHealthRepositoryIdentity(path)
         if (seen.has(identity.commonDirectory)) {
           continue
@@ -97,7 +107,7 @@ export class RepositoryHealthDialog extends React.Component<IProps, IState> {
         results.push(await inspectHealthRepository(identity.path))
         seen.add(identity.commonDirectory)
       } catch (error) {
-        errors.push(`${path}: ${String(error)}`)
+        errors.push(`${path}: ${errorMessage(error)}`)
       }
       if (this.mounted) {
         this.setState({ results: [...results], errors: [...errors] })

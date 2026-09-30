@@ -6,6 +6,7 @@ import { DefaultEditorLabel, RevealInFileManagerLabel } from './context-menu'
 export interface IFolderActions {
   readonly path: string
   readonly missing: boolean
+  readonly availableEditors: ReadonlyArray<string>
   readonly editorLabel: string | undefined
   readonly shellLabel: string
   readonly openShell: (path: string, shell?: Shell) => void
@@ -36,12 +37,18 @@ export function getFolderActions(
   }
   return [
     ...items,
-    {
-      label: 'Open in Visual Studio Code',
-      action: () => config.openEditor(path, 'Visual Studio Code'),
-      enabled: !missing,
-    },
-    ...(config.editorLabel === 'Visual Studio Code'
+    ...(config.availableEditors.includes('Visual Studio Code')
+      ? [
+          {
+            label: 'Open in Visual Studio Code',
+            action: () => config.openEditor(path, 'Visual Studio Code'),
+            enabled: !missing,
+          },
+        ]
+      : []),
+    ...(config.editorLabel === 'Visual Studio Code' ||
+    (config.editorLabel !== undefined &&
+      !config.availableEditors.includes(config.editorLabel))
       ? []
       : [
           {

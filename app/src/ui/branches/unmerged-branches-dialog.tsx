@@ -1,3 +1,4 @@
+import { errorMessage } from '../../lib/repository-health'
 import * as React from 'react'
 import { Repository } from '../../models/repository'
 import {
@@ -56,7 +57,7 @@ export class UnmergedBranchesDialog extends React.Component<IProps, IState> {
       }
     } catch (error) {
       if (request === this.request) {
-        this.setState({ branches: [], busy: false, error: String(error) })
+        this.setState({ branches: [], busy: false, error: errorMessage(error) })
       }
     }
   }

@@ -9,6 +9,23 @@ import { Branch, BranchType } from '../../../src/models/branch'
 import { Repository } from '../../../src/models/repository'
 
 describe('shared folder actions', () => {
+  it('does not offer VS Code when it is not installed, even with a stale preference', () => {
+    const actions = getFolderActions({
+      path: 'D:/repo',
+      missing: false,
+      availableEditors: ['Notepad++'],
+      editorLabel: 'Visual Studio Code',
+      shellLabel: 'Command Prompt',
+      openShell: () => {},
+      openEditor: () => {},
+      reveal: () => {},
+      copy: () => {},
+    })
+    assert.equal(
+      actions.some(action => action.label === 'Open in Visual Studio Code'),
+      false
+    )
+  })
   for (const path of [
     'D:\\Projects\\repo',
     "D:\\Projects\\repo worktrees\\fix & user's issue",
@@ -18,6 +35,7 @@ describe('shared folder actions', () => {
       const actions = getFolderActions({
         path,
         missing: false,
+        availableEditors: ['Visual Studio Code'],
         editorLabel: 'Visual Studio Code',
         shellLabel: 'Windows Terminal',
         openShell: (...args) => calls.push(args),
@@ -102,6 +120,7 @@ describe('shared folder actions', () => {
     const actions = getFolderActions({
       path: 'D:\\missing',
       missing: true,
+      availableEditors: ['Visual Studio Code'],
       editorLabel: undefined,
       shellLabel: 'Command Prompt',
       openShell: () => {},

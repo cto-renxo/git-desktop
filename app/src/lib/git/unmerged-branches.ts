@@ -1,3 +1,4 @@
+import pLimit from 'p-limit'
 import { git } from './core'
 import { listWorktrees } from './worktree'
 
@@ -72,20 +73,23 @@ export async function getUnmergedBranches(
     'unmergedBranches'
   )
   const worktrees = await listWorktrees(path)
-  const branches: IUnmergedBranch[] = []
-  for (const branch of parseBranchRefs(result.stdout)) {
-    const count = await git(
-      ['rev-list', '--count', `${sha}..${branch.ref}`, '--'],
-      path,
-      'unmergedBranchCount'
+  const limit = pLimit(6)
+  return Promise.all(
+    parseBranchRefs(result.stdout).map(branch =>
+      limit(async () => {
+        const count = await git(
+          ['rev-list', '--count', `${sha}..${branch.ref}`, '--'],
+          path,
+          'unmergedBranchCount'
+        )
+        return {
+          ...branch,
+          commitsOutsideTarget: Number(count.stdout),
+          worktreePaths: worktrees
+            .filter(w => w.branch === branch.ref)
+            .map(w => w.path),
+        }
+      })
     )
-    branches.push({
-      ...branch,
-      commitsOutsideTarget: Number(count.stdout),
-      worktreePaths: worktrees
-        .filter(w => w.branch === branch.ref)
-        .map(w => w.path),
-    })
-  }
-  return branches
+  )
 }

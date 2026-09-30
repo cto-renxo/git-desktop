@@ -30,3 +30,9 @@ configured with `DESKTOP_UPDATES_URL`; the upstream Central feed is rejected.
 
 The earlier separate-profile and branding changes are preserved by the local
 Git recovery ref `refs/backup/desktop-improvements-transfer`.
+
+## Repository discovery and updates
+
+Folder scans preserve nested repositories but skip generated and dependency directory names at every level, including build, bin, temp, library, vendor, Pods, target, virtual environments and plugin-link trees. Independent repositories beneath those names will not be discovered automatically; add them directly or select their repository directory as the scan root. Submodules are omitted from folder import and Repository Health results.
+
+Automatic updates are disabled without DESKTOP_UPDATES_URL. Delta packages are also disabled without a feed; production and beta builds with a configured feed remain eligible for deltas.
