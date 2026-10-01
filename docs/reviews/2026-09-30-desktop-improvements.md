@@ -22,22 +22,22 @@ Commits `c933d57` through `3b336d3` on `desktop-improvements`. Source changes on
 | B1 | Dev server exits on rebuild errors | Confirmed | Fixed `cb4f55e`; live hot-reload check pending |
 | B2 | Folder import accepts submodules | Confirmed | Fixed for import `cbb9956`; Health dialog still lists submodules |
 | B3 | Unbounded folder scan | Confirmed (not measured) | Skip list extended `cbb9956`; depth unchanged by design |
-| B4 | VS Code action always offered | Confirmed | Open |
+| B4 | VS Code action always offered | Confirmed | Implemented; detected-editor gating |
 | — | Health fetch lacks an account | Rejected | No change; do not add an account argument |
 | — | Repository menu child gating | Rejected | No change |
 | C1 | Foreground fetch broadens refspecs | Intentional | Confirm policy |
-| C2 | Health run locks all repositories | Confirmed | Open |
+| C2 | Health run locks all repositories | Confirmed | Implemented; selected common Git identities, per-worker release |
 | C3 | WSL detection always on | Confirmed | Confirm policy |
 | C4 | axe DevTools removed | Confirmed | Confirm policy |
-| C5 | Updates/deltas off without feed | Confirmed | Document delta consequence |
-| M1 | Sequential unmerged-branch counts | Confirmed (not timed) | Open |
-| M2 | Stale collapsed folder-group state | Confirmed | Open (storage and component) |
-| M3 | `Error:` prefixes | Partly confirmed (2 sites) | Open |
+| C5 | Updates/deltas off without feed | Confirmed | Delta consequence documented |
+| M1 | Sequential unmerged-branch counts | Confirmed (not timed) | Implemented; concurrency capped at six |
+| M2 | Stale collapsed folder-group state | Confirmed | Implemented for storage and component |
+| M3 | `Error:` prefixes | Confirmed at three sites in implementation review | Implemented; shared error-message helper |
 | M4 | Shared reset statistic | Behaviour | Only if stats are reported |
 | M5 | Windows x64 local packager | Limitation | None |
-| M6 | Gitignore submodule publication | Unresolved | Verify before sharing |
-| N1 | Health dialog lists submodules | Confirmed; identified during first-batch review, pre-existing since `6ced712` | Open |
-| N2 | Skip list hides repos under `build`/`bin`/`temp`/`library`/`vendor` | Confirmed tradeoff introduced by `cbb9956` | Document or accept |
+| M6 | Gitignore submodule publication | Configured upstream rejected exact-object fetch on 2026-10-01 | Publication fix required before sharing |
+| N1 | Health dialog lists submodules | Confirmed; identified during first-batch review, pre-existing since `6ced712` | Implemented; Health scan filters submodules |
+| N2 | Skip list hides repos under `build`/`bin`/`temp`/`library`/`vendor` | Confirmed tradeoff introduced by `cbb9956` | Documented with direct-add/scan-root alternatives |
 
 ## Verified findings (2026-09-30)
 
@@ -104,13 +104,16 @@ Checked against the `cb4f55e` and `cbb9956` diffs; the fixes are correct. Two ga
 - [x] B2 submodule exclusion in folder import
 - [x] B3 discovery skip list
 - [ ] Live launch and hot-reload check of B1
-- [ ] N1: hide submodules in the Repository Health dialog too, if wanted
-- [ ] B4: gate the VS Code action on installed editors
-- [ ] C2: lock only the repositories in a health run
-- [ ] M2, M3: stale collapsed state (storage and component) and the two `String(error)` sites
-- [ ] C1, C3, C4, C5: confirm fetch, WSL, dev-extension and update policies; document the delta consequence
-- [ ] M6: verify the gitignore submodule commit is fetchable before sharing the branch
-- [ ] M1, M4: bounded concurrency for unmerged-branch counts; separate reset stat if needed
+- [x] N1: hide submodules in the Repository Health dialog
+- [x] B4: gate the VS Code action on installed editors
+- [x] C2: lock only selected common Git identities; release each when its worker finishes
+- [x] M2, M3: stale collapsed state (storage and component) and the three identified `String(error)` sites
+- [x] C5: document the update-feed/delta consequence
+- [ ] C1, C3, C4: optional policy changes to fetch, WSL and dev extensions; existing intentional behavior preserved
+- [x] M6: check fetchability from configured GitHub upstream
+- [ ] M6: resolve unavailable submodule object before sharing
+- [x] M1: bounded concurrency for unmerged-branch counts
+- [ ] M4: separate reset statistic only if reporting requires it
 
 Looked correct, no change needed: health fetch authentication (`envForRemoteOperation` supplies the credential trampoline, same as `GitStore.fetchRemotes`), Repository menu child gating with no repository selected (`push`/`pull`/`fetch` and the rest are disabled in `getRepositoryMenuBuilder`), the hard-reset confirmation flow, the linked-worktree exclusion in folder import, the fast-forward-only guards in `safelyUpdateHealthWorktree`, folder-group path matching on Windows, and the local packaging script's staging and rename.
 
@@ -300,3 +303,21 @@ Five documentation findings were recorded and corrected:
 5. WSL launch evidence now says behavior was not tested, rather than implying a launch check found no failures.
 
 No application source was changed by this document review. N1/N2 behavior decisions and the outstanding fixes remain open as listed above.
+
+## Second implementation batch (2026-10-01)
+
+Implemented on codex/desktop-review-fixes, after the first batch commits:
+
+- B4: App detects installed editors on mount and passes their names to shared folder actions. VS Code is offered only when detected; a stale selected-editor preference is not presented as an available editor. Custom/default editor actions retain their existing path.
+- C2: Health operations resolve registered checkout identities and lock only those sharing common Git metadata with selected repositories, including linked worktrees. Busy unrelated repositories no longer block the run. Each worker releases its identity on completion/error; cancellation releases queued identities.
+- M2: Removing a folder group prunes persisted collapsed keys and the RepositoriesList component state. Re-adding a removed group does not restore its old collapsed state.
+- M3: Exported the existing error-message helper and used it in AppStore, the unmerged-branches dialog, and the Health dialog. The third site was newly found during this implementation review; the original verification's two-site count described a narrower inspection.
+- N1: Health scan results omit submodules for both registered and folder scans. Independent nested repositories and linked-worktree identity deduplication remain supported.
+- M1: Unmerged-branch counts run with at most six concurrent Git commands; Promise.all preserves result order.
+- N2/C5: docs/technical/desktop-local-build.md explains scan exclusions and direct-add/scan-root alternatives, and the update-feed requirement for delta packages.
+
+Validation: 28 tests across seven focused suites passed (repository health, folder import, Health/branch dialogs, shared folder actions, health locking, collapsed-state cleanup, unmerged branches). New tests cover installed-editor absence with a stale preference, selected/linked identity locks while an unrelated repository remains busy, submodule filtering in Health, and removal/re-add of collapsed groups. ESLint passed on all changed TypeScript files. Application TypeScript checking passed with --skipLibCheck; the normal check fails on conflicting WeakMap declarations in installed @types/lodash and TypeScript library definitions. These tests are local source/UI-harness evidence, not a native application launch or live hot-reload check.
+
+M6 live verification: an isolated temporary bare repository fetched the exact object ebcf0afa6af624bf59c3d3b674b744b029835a1e from https://github.com/github/gitignore.git on 2026-10-01. The server rejected it with upload-pack: not our ref. A fresh checkout cannot rely on obtaining that object from the configured source. No remote was modified and no submodule pointer was changed. Resolving this requires a published source serving the commit or replacement with a verified upstream commit while preserving the desired template correction.
+
+Existing foreground-fetch, WSL-detection, dev-extension and reset-stat policies are preserved. Native hot-reload validation and the submodule publication fix remain outstanding. The document's earlier verified-findings tables retain the historical pre-fix source assessment; the status table and this section describe current implementation.
